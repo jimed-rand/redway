@@ -8,8 +8,6 @@ import (
 )
 
 const (
-	// DefaultImageURL uses OCI registry format for LXC OCI template
-	// Format: oci-registry://registry/image:tag (accessed via skopeo)
 	DefaultImageURL      = "docker://redroid/redroid:16.0.0_64only-latest"
 	DefaultContainerName = "redroid"
 	DefaultGPUMode       = "guest"

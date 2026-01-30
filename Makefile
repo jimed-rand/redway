@@ -1,6 +1,5 @@
 .PHONY: help all build static install uninstall clean test fmt vet lint coverage dist check-linux
 
-# Variables
 OS := $(shell uname -s)
 PREFIX ?= /usr/local
 BINDIR = $(PREFIX)/bin
@@ -8,10 +7,8 @@ BINARY = redway
 GO = go
 GOFLAGS = -ldflags "-s -w"
 
-# Build flags
 LDFLAGS = -ldflags "-s -w"
 
-# Linux check helper
 check-linux:
 	@if [ "$(OS)" != "Linux" ]; then \
 		echo "Error: Redway is only available for Linux systems"; \
@@ -80,7 +77,7 @@ install: check-linux build
 	@echo "  sudo redway init                                    				# Initialize with default image"
 	@echo "  sudo redway init docker://redroid/redroid:16.0.0_64only-latest		# Custom OCI image"
 	@echo "  sudo redway start                                   				# Start container"
-	@echo "  sudo redway adb-connect                             				# Get ADB info"
+	@echo "  redway adb-connect                                  				# Get ADB info"
 	@echo ""
 
 uninstall:
