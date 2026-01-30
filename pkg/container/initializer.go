@@ -93,10 +93,13 @@ func (i *Initializer) checkKernelModules() error {
 
 	// Advisory warning only - don't fail, let user proceed
 	fmt.Println("Binder support (binderfs/binder module) not detected")
-	fmt.Println("This may be normal if your kernel has built-in support.")
+	fmt.Println("You need to enable the binderfs in your kernel or install binder module.")
+	fmt.Println("                                               ")
 	fmt.Println("If container fails to start, try loading modules:")
-	fmt.Println("  sudo modprobe binder_linux devices=\"binder,hwbinder,vndbinder\"")
-	fmt.Println("See README for distro-specific instructions.")
+	fmt.Println("                                               ")
+	fmt.Println("sudo modprobe binder_linux devices=\"binder,hwbinder,vndbinder\"")
+	fmt.Println("                                               ")
+	fmt.Println("See README for more information.")
 
 	return nil // Continue anyway - let container startup reveal actual issues
 }
@@ -118,19 +121,19 @@ func (i *Initializer) checkLXCNetworking() error {
 	// Check if lxc-net service is active (systemd)
 	cmd := exec.Command("systemctl", "is-active", "--quiet", "lxc-net")
 	if err := cmd.Run(); err == nil {
-		fmt.Println("    LXC networking (lxc-net) is active")
+		fmt.Println("LXC networking (lxc-net) is active")
 		return nil
 	}
 
 	// Fallback: check if lxcbr0 bridge exists
 	if _, err := os.Stat("/sys/class/net/lxcbr0"); err == nil {
-		fmt.Println("    LXC bridge (lxcbr0) is available")
+		fmt.Println("LXC bridge (lxcbr0) is available")
 		return nil
 	}
 
 	// Warning only, don't fail - some setups use different networking
-	fmt.Println("    LXC networking isn't detected. Container may need manual network setup.")
-	fmt.Println("      Try: sudo systemctl start lxc-net")
+	fmt.Println("LXC networking isn't detected. Container may need manual network setup.")
+	fmt.Println("Try: sudo systemctl start lxc-net")
 	return nil
 }
 
@@ -138,7 +141,7 @@ func (i *Initializer) adjustOCITemplate() error {
 	templatePath := "/usr/share/lxc/templates/lxc-oci"
 
 	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		fmt.Println("    Note: lxc-oci templates not found, skipping adjustment")
+		fmt.Println("Note: lxc-oci templates not found, skipping adjustment")
 		return nil
 	}
 
