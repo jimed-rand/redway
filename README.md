@@ -12,7 +12,7 @@ of use, performance, and reliability.
 - **Addons System (Injection-Based)** - Inject ARM translation and GAPPS into
   running containers
 - **Kernel Module Management** - Automatically checks and attempts to load
-  required kernel modules (`binder_linux`, `ashmem_linux`)
+  required kernel modules (`binder_linux`)
 - **ADB Integration** - Built-in ADB connection management with automatic port
   mapping
 - **GPU Acceleration Support** - Easy configuration for GPU rendering modes
@@ -27,30 +27,23 @@ GPU-accelerated **AIC (Android In Container)** solution that allows you to run
 Android in containers with near-native performance. It is commonly used for
 cloud gaming, automated testing, and virtual mobile infrastructure.
 
-## Requirements
-
-- **Linux OS**: Ubuntu 20.04+, Debian 11+, etc.
-- **Container Runtime**: Docker OR Podman
-- **System Dependencies**: `lzip`, `tar`, `xz-utils` (required for addons)
-- **Binder Modules**: `binder_linux` (usually available on modern kernels or can
-  be loaded)
-
 ## Installation
 
-1. **Install Dependencies**:
-   ```bash
-   # Ubuntu/Debian
-   sudo apt install golang lzip tar xz-utils
-   ```
+1. **Install Dependencies**
 
-2. **Clone and Build**:
+   You need to install go/golang to build, and then lzip, tar, and xz-utils on
+   your Linux systems.
+
+2. **Clone and Build**
+
    ```bash
    git clone https://github.com/jimed-rand/reddock.git
    cd reddock
    make build
    ```
 
-3. **Install (Optional)**:
+3. **Install (Optional)**
+
    ```bash
    sudo make install
    ```
@@ -92,6 +85,7 @@ reddock adb-connect my-android
 | `addons list`           | List available addons (Gapps, ARM Translation)      |
 | `addons inject <n> <a>` | Inject single addon to running container            |
 | `addons inject-multi`   | Inject multiple addons at once                      |
+| `addons register-gapps` | Fetch Android ID for Google Play registration       |
 | `log <name>`            | Show container logs                                 |
 | `list`                  | List all Reddock-managed containers                 |
 | `remove <name> [--all]` | Remove a container, data, and optionally image (-a) |
@@ -106,7 +100,7 @@ translation layers and Google Apps directly into a **running container**.
 
 #### 1. ARM Translation
 
-- **Houdini**: Intel Houdini for running ARM apps on x86/x86_64.
+- **Houdini**: Intel Houdini (Intel's ARM translation libraries on x86/x86_64).
   - Support: Android 8.1.0 - 16.0.0
   - Arch: x86, x86_64
 - **NDK Translation**: Google NDK Translation for ARM compatibility.
@@ -124,6 +118,20 @@ translation layers and Google Apps directly into a **running container**.
 1. **Start** your container first: `sudo reddock start my-android`
 2. **Inject** the addon: `sudo reddock addons inject my-android litegapps`
 3. **Restart** to apply changes: `sudo reddock restart my-android`
+
+### Google Play Certification
+
+According to
+[Waydroid documentation](https://docs.waydro.id/faq/google-play-certification),
+you need to register your session before using Google Play.
+
+1. **Start** your container and **Open** the Google Play Store once.
+2. **Fetch** your Android ID:
+   ```bash
+   sudo reddock addons register-gapps my-android
+   ```
+3. **Submit** the ID to
+   [Google's device registration page](https://www.google.com/android/uncertified/).
 
 ### Advanced Injection Examples
 
@@ -143,27 +151,6 @@ sudo reddock init dev redroid/redroid:11.0.0-latest
 sudo reddock start dev
 sudo reddock addons inject-multi dev opengapps houdini
 sudo reddock restart dev
-```
-
-## ARM Translation Configuration
-
-After injecting Houdini or NDK, the container needs specific properties to
-utilize the translation layer. Reddock aims to automate this, but currently, you
-may need to ensure the following parameters are passed to the container (usually
-handled during `start` if configured):
-
-**For NDK Translation:**
-
-```bash
-ro.product.cpu.abilist=x86_64,arm64-v8a,x86,armeabi-v7a,armeabi \
-ro.product.cpu.abilist64=x86_64,arm64-v8a \
-ro.product.cpu.abilist32=x86,armeabi-v7a,armeabi \
-ro.dalvik.vm.isa.arm=x86 \
-ro.dalvik.vm.isa.arm64=x86_64 \
-ro.enable.native.bridge.exec=1 \
-ro.vendor.enable.native.bridge.exec=1 \
-ro.vendor.enable.native.bridge.exec64=1 \
-ro.dalvik.vm.native.bridge=libndk_translation.so
 ```
 
 ## Troubleshooting

@@ -87,7 +87,7 @@ func CheckDependencies() error {
 	}
 
 	if len(missing) > 0 {
-		return fmt.Errorf("missing required dependencies: %v. Please install them (e.g., sudo apt install lzip tar xz-utils)", missing)
+		return fmt.Errorf("Missing required dependencies: %v. Please install lzip, tar, and xz-utils on your Linux distribution", missing)
 	}
 
 	return nil
@@ -102,20 +102,31 @@ func ensureDir(path string) error {
 func downloadFile(url, filepath string) error {
 	resp, err := http.Get(url)
 	if err != nil {
-		return fmt.Errorf("failed to download: %v", err)
+		return fmt.Errorf("Failed to download: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad status: %s", resp.Status)
+		return fmt.Errorf("Bad status: %s", resp.Status)
 	}
 
 	out, err := os.Create(filepath)
 	if err != nil {
-		return fmt.Errorf("failed to create file: %v", err)
+		return fmt.Errorf("Failed to create file: %v", err)
 	}
 	defer out.Close()
 
 	_, err = io.Copy(out, resp.Body)
 	return err
+}
+
+// DetectRuntime checks if podman or docker is available and running
+func DetectRuntime() string {
+	if _, err := exec.LookPath("podman"); err == nil {
+		cmd := exec.Command("podman", "ps")
+		if err := cmd.Run(); err == nil {
+			return "podman"
+		}
+	}
+	return "docker"
 }

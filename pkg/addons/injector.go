@@ -73,23 +73,23 @@ func (ai *AddonInjector) InjectToContainer(containerName, addonName, version, ar
 
 	fmt.Printf("Downloading %s...\n", addon.Name())
 	if err := addon.Download(version, arch); err != nil {
-		return fmt.Errorf("download failed: %v", err)
+		return fmt.Errorf("Download failed: %v", err)
 	}
 
 	fmt.Printf("Extracting %s...\n", addon.Name())
 	if err := addon.Extract(version, arch); err != nil {
-		return fmt.Errorf("extract failed: %v", err)
+		return fmt.Errorf("Extract failed: %v", err)
 	}
 
 	fmt.Printf("Preparing files for injection...\n")
 	addonDir := filepath.Join(ai.workDir, addonName)
 	if err := addon.Copy(version, arch, ai.workDir); err != nil {
-		return fmt.Errorf("copy failed: %v", err)
+		return fmt.Errorf("Copy failed: %v", err)
 	}
 
 	fmt.Printf("Injecting files into container...\n")
 	if err := ai.copyToContainer(containerName, addonDir); err != nil {
-		return fmt.Errorf("injection failed: %v", err)
+		return fmt.Errorf("Injection failed: %v", err)
 	}
 
 	fmt.Printf("Setting permissions...\n")
@@ -116,7 +116,7 @@ func (ai *AddonInjector) InjectToContainer(containerName, addonName, version, ar
 		}
 	}
 
-	fmt.Printf("\n✓ Successfully injected %s into %s\n", addon.Name(), containerName)
+	fmt.Printf("\nSuccessfully injected %s into %s\n", addon.Name(), containerName)
 	fmt.Printf("\nNote: You may need to restart the container for changes to take effect:\n")
 	fmt.Printf("  sudo reddock restart %s\n", containerName)
 
@@ -130,28 +130,28 @@ func (ai *AddonInjector) checkContainerRunning(containerName string) error {
 		cmd = exec.Command("podman", "inspect", "-f", "{{.State.Status}}", containerName)
 		output, err = cmd.Output()
 		if err != nil {
-			return fmt.Errorf("container '%s' not found", containerName)
+			return fmt.Errorf("Container '%s' not found", containerName)
 		}
 	}
 
 	status := strings.TrimSpace(string(output))
 	if status != "running" {
-		return fmt.Errorf("container '%s' is not running (status: %s). Please start it first", containerName, status)
+		return fmt.Errorf("Container '%s' is not running (status: %s). Please start it first", containerName, status)
 	}
 
 	return nil
 }
 
 func (ai *AddonInjector) copyToContainer(containerName, addonDir string) error {
-	runtime := ai.detectRuntime()
+	runtime := DetectRuntime()
 
 	if _, err := os.Stat(addonDir); os.IsNotExist(err) {
-		return fmt.Errorf("addon directory not found: %s", addonDir)
+		return fmt.Errorf("Addon directory not found: %s", addonDir)
 	}
 
 	entries, err := os.ReadDir(addonDir)
 	if err != nil {
-		return fmt.Errorf("failed to read addon directory: %v", err)
+		return fmt.Errorf("Failed to read addon directory: %v", err)
 	}
 
 	for _, entry := range entries {
@@ -162,7 +162,7 @@ func (ai *AddonInjector) copyToContainer(containerName, addonDir string) error {
 		cmd.Stderr = os.Stderr
 
 		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to copy %s: %v", entry.Name(), err)
+			return fmt.Errorf("Failed to copy %s: %v", entry.Name(), err)
 		}
 		fmt.Printf("  ✓ Copied %s\n", entry.Name())
 	}
@@ -171,7 +171,7 @@ func (ai *AddonInjector) copyToContainer(containerName, addonDir string) error {
 }
 
 func (ai *AddonInjector) setPermissions(containerName, addonName string) error {
-	runtime := ai.detectRuntime()
+	runtime := DetectRuntime()
 
 	var commands [][]string
 
@@ -204,16 +204,6 @@ func (ai *AddonInjector) setPermissions(containerName, addonName string) error {
 	}
 
 	return nil
-}
-
-func (ai *AddonInjector) detectRuntime() string {
-	if _, err := exec.LookPath("podman"); err == nil {
-		cmd := exec.Command("podman", "ps")
-		if err := cmd.Run(); err == nil {
-			return "podman"
-		}
-	}
-	return "docker"
 }
 
 func (ai *AddonInjector) InjectMultiple(containerName string, addons []AddonRequest) error {

@@ -25,7 +25,7 @@ func NewStatusManager(containerName string) *StatusManager {
 func (s *StatusManager) Show() error {
 	cont := s.config.GetContainer(s.containerName)
 	if cont == nil {
-		return fmt.Errorf("container '%s' not found", s.containerName)
+		return fmt.Errorf("Container '%s' not found", s.containerName)
 	}
 
 	fmt.Println("Reddock Status")

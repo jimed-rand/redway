@@ -139,7 +139,7 @@ func (o *OpenGappsAddon) Copy(version, arch, outputDir string) error {
 	coreDir := filepath.Join(o.extractTo, "Core")
 	files, err := os.ReadDir(coreDir)
 	if err != nil {
-		return fmt.Errorf("failed to read Core directory: %v", err)
+		return fmt.Errorf("Failed to read Core directory: %v", err)
 	}
 
 	for _, file := range files {
@@ -163,7 +163,7 @@ func (o *OpenGappsAddon) Copy(version, arch, outputDir string) error {
 
 			cmd := exec.Command("tar", "--lzip", "-xvf", lzPath, "-C", appUnpackDir)
 			if err := cmd.Run(); err != nil {
-				return fmt.Errorf("failed to extract %s: %v", lzFile, err)
+				return fmt.Errorf("Failed to extract %s: %v", lzFile, err)
 			}
 
 			dirs, err := os.ReadDir(appUnpackDir)
@@ -202,7 +202,7 @@ func (o *OpenGappsAddon) Copy(version, arch, outputDir string) error {
 
 			cmd := exec.Command("tar", "--lzip", "-xvf", lzPath, "-C", appUnpackDir)
 			if err := cmd.Run(); err != nil {
-				return fmt.Errorf("failed to extract %s: %v", lzFile, err)
+				return fmt.Errorf("Failed to extract %s: %v", lzFile, err)
 			}
 
 			dirs, err := os.ReadDir(appUnpackDir)

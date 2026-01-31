@@ -120,7 +120,7 @@ func (l *LiteGappsAddon) Download(version, arch string) error {
 
 	versionLinks, ok := l.dlLinks[version]
 	if !ok {
-		return fmt.Errorf("no download links for version %s", version)
+		return fmt.Errorf("No download links for version %s", version)
 	}
 
 	archLinks, ok := versionLinks[arch]
@@ -209,7 +209,7 @@ func (l *LiteGappsAddon) Copy(version, arch, outputDir string) error {
 
 	cmd := exec.Command("tar", "-xvf", tarFile, "-C", appUnpackDir)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to extract tar.xz: %v", err)
+		return fmt.Errorf("Failed to extract tar.xz: %v", err)
 	}
 
 	apiLevel := l.apiLevelMap[version]

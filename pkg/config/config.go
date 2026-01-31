@@ -78,12 +78,12 @@ func Load() (*Config, error) {
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config: %v", err)
+		return nil, fmt.Errorf("Failed to read config: %v", err)
 	}
 
 	var cfg Config
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse config: %v", err)
+		return nil, fmt.Errorf("Failed to parse config: %v", err)
 	}
 
 	if cfg.Containers == nil {
@@ -97,17 +97,17 @@ func Save(cfg *Config) error {
 	configDir := GetConfigDir()
 
 	if err := os.MkdirAll(configDir, 0755); err != nil {
-		return fmt.Errorf("failed to create config directory: %v", err)
+		return fmt.Errorf("Failed to create config directory: %v", err)
 	}
 
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal config: %v", err)
+		return fmt.Errorf("Failed to marshal config: %v", err)
 	}
 
 	configPath := GetConfigPath()
 	if err := os.WriteFile(configPath, data, 0644); err != nil {
-		return fmt.Errorf("failed to write config: %v", err)
+		return fmt.Errorf("Failed to write config: %v", err)
 	}
 
 	return nil

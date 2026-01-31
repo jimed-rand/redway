@@ -23,6 +23,8 @@ func (c *Command) executeAddons() error {
 		return c.executeAddonsInject(subArgs)
 	case "inject-multi":
 		return c.executeAddonsInjectMulti(subArgs)
+	case "register-gapps":
+		return c.executeAddonsRegisterGApps(subArgs)
 	default:
 		return fmt.Errorf("Unknown addons subcommand: %s", subCommand)
 	}
@@ -35,6 +37,7 @@ func (c *Command) showAddonsHelp() error {
 	fmt.Println("  list                                List available addons")
 	fmt.Println("  inject <container> <addon>          Inject addon to running container")
 	fmt.Println("  inject-multi <container> <addons>   Inject multiple addons")
+	fmt.Println("  register-gapps <container>          Fetch Android ID for Google Play registration")
 	fmt.Println("\nAvailable Addons:")
 	fmt.Println("  houdini       - Intel Houdini ARM translation (x86/x86_64 only)")
 	fmt.Println("  ndk           - NDK ARM translation (x86/x86_64 only)")
@@ -142,6 +145,15 @@ func (c *Command) executeAddonsInjectMulti(args []string) error {
 	}
 
 	return injector.InjectMultiple(containerName, requests)
+}
+
+func (c *Command) executeAddonsRegisterGApps(args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("Command invalid! usage: reddock addons register-gapps <container-name>")
+	}
+
+	containerName := args[0]
+	return addons.RegisterGApps(containerName)
 }
 
 // Removed local extractVersionFromImage in favor of utils.ExtractVersionFromImage
