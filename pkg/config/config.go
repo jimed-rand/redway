@@ -11,15 +11,23 @@ const (
 	DefaultImageURL      = "docker://redroid/redroid:16.0.0_64only-latest"
 	DefaultContainerName = "redroid"
 	DefaultGPUMode       = "guest"
+	DefaultBridgeName    = "redroid0"
+	DefaultBridgeSubnet  = "10.0.4.0/24"
+	DefaultBridgeIP      = "10.0.4.1"
 )
 
+type Container struct {
+	Name        string `json:"name"`
+	ImageURL    string `json:"image_url"`
+	DataPath    string `json:"data_path"`
+	LogFile     string `json:"log_file"`
+	GPUMode     string `json:"gpu_mode"`
+	Initialized bool   `json:"initialized"`
+}
+
 type Config struct {
-	ContainerName string `json:"container_name"`
-	ImageURL      string `json:"image_url"`
-	DataPath      string `json:"data_path"`
-	LogFile       string `json:"log_file"`
-	GPUMode       string `json:"gpu_mode"`
-	Initialized   bool   `json:"initialized"`
+	Containers map[string]*Container `json:"containers"`
+	LXCReady   bool                  `json:"lxc_ready"`
 }
 
 func GetConfigDir() string {
@@ -31,19 +39,26 @@ func GetConfigPath() string {
 	return filepath.Join(GetConfigDir(), "config.json")
 }
 
-func GetDefaultDataPath() string {
+func GetDefaultDataPath(containerName string) string {
 	home := os.Getenv("HOME")
-	return filepath.Join(home, "data-redroid")
+	return filepath.Join(home, "data-"+containerName)
 }
 
 func GetDefault() *Config {
+	defaultContainer := &Container{
+		Name:        DefaultContainerName,
+		ImageURL:    DefaultImageURL,
+		DataPath:    GetDefaultDataPath(DefaultContainerName),
+		LogFile:     "redroid.log",
+		GPUMode:     DefaultGPUMode,
+		Initialized: false,
+	}
+
 	return &Config{
-		ContainerName: DefaultContainerName,
-		ImageURL:      DefaultImageURL,
-		DataPath:      GetDefaultDataPath(),
-		LogFile:       "redroid.log",
-		GPUMode:       DefaultGPUMode,
-		Initialized:   false,
+		Containers: map[string]*Container{
+			DefaultContainerName: defaultContainer,
+		},
+		LXCReady: false,
 	}
 }
 
@@ -62,6 +77,11 @@ func Load() (*Config, error) {
 	var cfg Config
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
+	}
+
+	// Ensure containers map is initialized
+	if cfg.Containers == nil {
+		cfg.Containers = make(map[string]*Container)
 	}
 
 	return &cfg, nil
@@ -87,14 +107,42 @@ func Save(cfg *Config) error {
 	return nil
 }
 
-func (c *Config) GetContainerPath() string {
-	return filepath.Join("/var/lib/lxc", c.ContainerName)
+// Container helper methods
+func (c *Container) GetContainerPath() string {
+	return filepath.Join("/var/lib/lxc", c.Name)
 }
 
-func (c *Config) GetConfigFilePath() string {
+func (c *Container) GetConfigFilePath() string {
 	return filepath.Join(c.GetContainerPath(), "config")
 }
 
-func (c *Config) GetRootfsPath() string {
+func (c *Container) GetRootfsPath() string {
 	return filepath.Join(c.GetContainerPath(), "rootfs")
+}
+
+// Config helper methods for backward compatibility
+func (cfg *Config) GetContainer(name string) *Container {
+	if container, exists := cfg.Containers[name]; exists {
+		return container
+	}
+	return nil
+}
+
+func (cfg *Config) AddContainer(container *Container) {
+	if cfg.Containers == nil {
+		cfg.Containers = make(map[string]*Container)
+	}
+	cfg.Containers[container.Name] = container
+}
+
+func (cfg *Config) RemoveContainer(name string) {
+	delete(cfg.Containers, name)
+}
+
+func (cfg *Config) ListContainers() []*Container {
+	var containers []*Container
+	for _, container := range cfg.Containers {
+		containers = append(containers, container)
+	}
+	return containers
 }

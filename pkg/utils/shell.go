@@ -9,18 +9,20 @@ import (
 )
 
 type ShellManager struct {
-	manager *container.Manager
+	manager       *container.Manager
+	containerName string
 }
 
-func NewShellManager() *ShellManager {
+func NewShellManager(containerName string) *ShellManager {
 	return &ShellManager{
-		manager: container.NewManager(),
+		manager:       container.NewManagerForContainer(containerName),
+		containerName: containerName,
 	}
 }
 
 func (s *ShellManager) Enter() error {
 	if !s.manager.IsRunning() {
-		return fmt.Errorf("The container is not running. Start it with 'redway start'")
+		return fmt.Errorf("The container '%s' is not running. Start it with 'redway start %s'", s.containerName, s.containerName)
 	}
 
 	pid, err := s.manager.GetPID()

@@ -11,16 +11,25 @@ import (
 )
 
 type LogManager struct {
-	config *config.Config
+	config        *config.Config
+	containerName string
 }
 
-func NewLogManager() *LogManager {
+func NewLogManager(containerName string) *LogManager {
 	cfg, _ := config.Load()
-	return &LogManager{config: cfg}
+	return &LogManager{
+		config:        cfg,
+		containerName: containerName,
+	}
 }
 
 func (l *LogManager) Show() error {
-	logFile := l.config.LogFile
+	container := l.config.GetContainer(l.containerName)
+	if container == nil {
+		return fmt.Errorf("container '%s' not found", l.containerName)
+	}
+
+	logFile := container.LogFile
 
 	if _, err := os.Stat(logFile); os.IsNotExist(err) {
 		return fmt.Errorf("The log file '%s' is not found", logFile)

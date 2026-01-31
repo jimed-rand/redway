@@ -8,30 +8,37 @@ import (
 )
 
 type StatusManager struct {
-	manager *container.Manager
-	config  *config.Config
+	manager       *container.Manager
+	config        *config.Config
+	containerName string
 }
 
-func NewStatusManager() *StatusManager {
+func NewStatusManager(containerName string) *StatusManager {
 	cfg, _ := config.Load()
 	return &StatusManager{
-		manager: container.NewManager(),
-		config:  cfg,
+		manager:       container.NewManagerForContainer(containerName),
+		config:        cfg,
+		containerName: containerName,
 	}
 }
 
 func (s *StatusManager) Show() error {
+	cont := s.config.GetContainer(s.containerName)
+	if cont == nil {
+		return fmt.Errorf("container '%s' not found", s.containerName)
+	}
+
 	fmt.Println("Redway Status")
 	fmt.Println("=============")
 
-	fmt.Printf("\nContainer: %s\n", s.config.ContainerName)
-	fmt.Printf("Image: %s\n", s.config.ImageURL)
-	fmt.Printf("Data Path: %s\n", s.config.DataPath)
-	fmt.Printf("GPU Mode: %s\n", s.config.GPUMode)
-	fmt.Printf("Initialized: %v\n", s.config.Initialized)
+	fmt.Printf("\nContainer: %s\n", cont.Name)
+	fmt.Printf("Image: %s\n", cont.ImageURL)
+	fmt.Printf("Data Path: %s\n", cont.DataPath)
+	fmt.Printf("GPU Mode: %s\n", cont.GPUMode)
+	fmt.Printf("Initialized: %v\n", cont.Initialized)
 
-	if !s.config.Initialized {
-		fmt.Println("\nThe container is not initialized. Run 'redway init' first.")
+	if !cont.Initialized {
+		fmt.Println("\nThe container is not initialized. Run 'redway init %s' first.", cont.Name)
 		return nil
 	}
 
@@ -59,7 +66,7 @@ func (s *StatusManager) Show() error {
 		}
 	} else {
 		fmt.Println("\nThe container is STOPPED")
-		fmt.Println("\nStart with: redway start")
+		fmt.Printf("\nStart with: redway start %s\n", cont.Name)
 	}
 
 	return nil

@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	
+
 	"redway/pkg/config"
 	"redway/pkg/container"
 	"redway/pkg/utils"
@@ -22,6 +22,8 @@ func NewCommand(name string, args []string) *Command {
 
 func (c *Command) Execute() error {
 	switch c.Name {
+	case "prepare-lxc":
+		return c.executePrepareLXC()
 	case "init":
 		return c.executeInit()
 	case "start":
@@ -47,59 +49,137 @@ func (c *Command) Execute() error {
 	}
 }
 
+func (c *Command) executePrepareLXC() error {
+	preparer := container.NewLXCPreparer()
+	return preparer.PrepareLXC()
+}
+
 func (c *Command) executeInit() error {
+	var containerName string
 	var image string
+
+	// Parse arguments: init [container-name] [image-url]
 	if len(c.Args) > 0 {
-		image = c.Args[0]
+		containerName = c.Args[0]
+	} else {
+		containerName = config.DefaultContainerName
+	}
+
+	if len(c.Args) > 1 {
+		image = c.Args[1]
 	} else {
 		image = config.DefaultImageURL
 	}
-	
-	init := container.NewInitializer(image)
+
+	init := container.NewInitializer(containerName, image)
 	return init.Initialize()
 }
 
 func (c *Command) executeStart() error {
-	mgr := container.NewManager()
+	var containerName string
+
+	if len(c.Args) > 0 {
+		containerName = c.Args[0]
+	} else {
+		containerName = config.DefaultContainerName
+	}
+
+	mgr := container.NewManagerForContainer(containerName)
 	return mgr.Start()
 }
 
 func (c *Command) executeStop() error {
-	mgr := container.NewManager()
+	var containerName string
+
+	if len(c.Args) > 0 {
+		containerName = c.Args[0]
+	} else {
+		containerName = config.DefaultContainerName
+	}
+
+	mgr := container.NewManagerForContainer(containerName)
 	return mgr.Stop()
 }
 
 func (c *Command) executeRestart() error {
-	mgr := container.NewManager()
+	var containerName string
+
+	if len(c.Args) > 0 {
+		containerName = c.Args[0]
+	} else {
+		containerName = config.DefaultContainerName
+	}
+
+	mgr := container.NewManagerForContainer(containerName)
 	return mgr.Restart()
 }
 
 func (c *Command) executeStatus() error {
-	status := utils.NewStatusManager()
+	var containerName string
+
+	if len(c.Args) > 0 {
+		containerName = c.Args[0]
+	} else {
+		containerName = config.DefaultContainerName
+	}
+
+	status := utils.NewStatusManager(containerName)
 	return status.Show()
 }
 
 func (c *Command) executeShell() error {
-	shell := utils.NewShellManager()
+	var containerName string
+
+	if len(c.Args) > 0 {
+		containerName = c.Args[0]
+	} else {
+		containerName = config.DefaultContainerName
+	}
+
+	shell := utils.NewShellManager(containerName)
 	return shell.Enter()
 }
 
 func (c *Command) executeAdbConnect() error {
-	adb := utils.NewAdbManager()
+	var containerName string
+
+	if len(c.Args) > 0 {
+		containerName = c.Args[0]
+	} else {
+		containerName = config.DefaultContainerName
+	}
+
+	adb := utils.NewAdbManager(containerName)
 	return adb.ShowConnection()
 }
 
 func (c *Command) executeRemove() error {
-	mgr := container.NewManager()
+	var containerName string
+
+	if len(c.Args) > 0 {
+		containerName = c.Args[0]
+	} else {
+		containerName = config.DefaultContainerName
+	}
+
+	mgr := container.NewManagerForContainer(containerName)
 	return mgr.Remove()
 }
 
 func (c *Command) executeList() error {
 	lister := container.NewLister()
-	return lister.List()
+	return lister.ListRedwayContainers()
 }
 
 func (c *Command) executeLog() error {
-	logger := utils.NewLogManager()
+	var containerName string
+
+	if len(c.Args) > 0 {
+		containerName = c.Args[0]
+	} else {
+		containerName = config.DefaultContainerName
+	}
+
+	logger := utils.NewLogManager(containerName)
 	return logger.Show()
 }

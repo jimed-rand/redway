@@ -10,32 +10,57 @@ import (
 )
 
 type Manager struct {
-	config *config.Config
+	config        *config.Config
+	containerName string
 }
 
 func NewManager() *Manager {
 	cfg, _ := config.Load()
-	return &Manager{config: cfg}
+	return &Manager{
+		config:        cfg,
+		containerName: config.DefaultContainerName,
+	}
+}
+
+func NewManagerForContainer(containerName string) *Manager {
+	cfg, _ := config.Load()
+	return &Manager{
+		config:        cfg,
+		containerName: containerName,
+	}
+}
+
+func (m *Manager) getContainer() (*config.Container, error) {
+	container := m.config.GetContainer(m.containerName)
+	if container == nil {
+		return nil, fmt.Errorf("container '%s' not found", m.containerName)
+	}
+	return container, nil
 }
 
 func (m *Manager) Start() error {
-	if !m.config.Initialized {
-		return fmt.Errorf("The container is not initialized. Run 'redway init' first")
+	container, err := m.getContainer()
+	if err != nil {
+		return err
+	}
+
+	if !container.Initialized {
+		return fmt.Errorf("The container '%s' is not initialized. Run 'redway init %s' first", container.Name, container.Name)
 	}
 
 	if m.IsRunning() {
-		fmt.Println("The container is already running")
+		fmt.Printf("The container '%s' is already running\n", container.Name)
 		return nil
 	}
 
-	fmt.Printf("Starting the container '%s'...\n", m.config.ContainerName)
+	fmt.Printf("Starting the container '%s'...\n", container.Name)
 
-	logPath := m.config.LogFile
+	logPath := container.LogFile
 
 	cmd := exec.Command("lxc-start",
 		"-l", "debug",
 		"-o", logPath,
-		"-n", m.config.ContainerName)
+		"-n", container.Name)
 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to start container: %v", err)
@@ -44,21 +69,26 @@ func (m *Manager) Start() error {
 	fmt.Println("The container started successfully")
 	fmt.Printf("\nLog file: %s\n", logPath)
 	fmt.Println("\nNext steps:")
-	fmt.Println("  redway status       # Check container status")
-	fmt.Println("  redway adb-connect  # Get ADB connection info")
+	fmt.Printf("  redway status %s       # Check container status\n", container.Name)
+	fmt.Printf("  redway adb-connect %s  # Get ADB connection info\n", container.Name)
 
 	return nil
 }
 
 func (m *Manager) Stop() error {
+	container, err := m.getContainer()
+	if err != nil {
+		return err
+	}
+
 	if !m.IsRunning() {
-		fmt.Println("The container is not running")
+		fmt.Printf("The container '%s' is not running\n", container.Name)
 		return nil
 	}
 
-	fmt.Printf("Stopping the container '%s'...\n", m.config.ContainerName)
+	fmt.Printf("Stopping the container '%s'...\n", container.Name)
 
-	cmd := exec.Command("lxc-stop", "-k", "-n", m.config.ContainerName)
+	cmd := exec.Command("lxc-stop", "-k", "-n", container.Name)
 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to stop container: %v", err)
@@ -79,6 +109,11 @@ func (m *Manager) Restart() error {
 }
 
 func (m *Manager) Remove() error {
+	container, err := m.getContainer()
+	if err != nil {
+		return err
+	}
+
 	if m.IsRunning() {
 		fmt.Println("Stopping the container first...")
 		if err := m.Stop(); err != nil {
@@ -86,9 +121,9 @@ func (m *Manager) Remove() error {
 		}
 	}
 
-	fmt.Printf("Removing the container '%s'...\n", m.config.ContainerName)
+	fmt.Printf("Removing the container '%s'...\n", container.Name)
 
-	cmd := exec.Command("lxc-destroy", "-n", m.config.ContainerName)
+	cmd := exec.Command("lxc-destroy", "-n", container.Name)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to remove container: %v", err)
 	}
@@ -98,16 +133,17 @@ func (m *Manager) Remove() error {
 	fmt.Scanln(&response)
 
 	if strings.ToLower(response) == "y" {
-		if err := os.RemoveAll(m.config.DataPath); err != nil {
+		if err := os.RemoveAll(container.DataPath); err != nil {
 			fmt.Printf("Warning: Could not remove data directory: %v\n", err)
 		} else {
-			fmt.Printf("Data directory removed: %s\n", m.config.DataPath)
+			fmt.Printf("Data directory removed: %s\n", container.DataPath)
 		}
 	}
 
-	configPath := config.GetConfigPath()
-	if err := os.Remove(configPath); err != nil {
-		fmt.Printf("Warning: Could not remove the config: %v\n", err)
+	// Remove container from config
+	m.config.RemoveContainer(container.Name)
+	if err := config.Save(m.config); err != nil {
+		fmt.Printf("Warning: Could not update config: %v\n", err)
 	}
 
 	fmt.Println("The container removed successfully")
@@ -115,7 +151,12 @@ func (m *Manager) Remove() error {
 }
 
 func (m *Manager) IsRunning() bool {
-	cmd := exec.Command("lxc-info", "-n", m.config.ContainerName, "-s")
+	container, err := m.getContainer()
+	if err != nil {
+		return false
+	}
+
+	cmd := exec.Command("lxc-info", "-n", container.Name, "-s")
 	output, err := cmd.Output()
 	if err != nil {
 		return false
@@ -125,7 +166,12 @@ func (m *Manager) IsRunning() bool {
 }
 
 func (m *Manager) GetInfo() (string, error) {
-	cmd := exec.Command("lxc-info", m.config.ContainerName)
+	container, err := m.getContainer()
+	if err != nil {
+		return "", err
+	}
+
+	cmd := exec.Command("lxc-info", container.Name)
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -134,7 +180,12 @@ func (m *Manager) GetInfo() (string, error) {
 }
 
 func (m *Manager) GetIP() (string, error) {
-	cmd := exec.Command("lxc-info", m.config.ContainerName, "-i")
+	container, err := m.getContainer()
+	if err != nil {
+		return "", err
+	}
+
+	cmd := exec.Command("lxc-info", container.Name, "-i")
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -154,7 +205,12 @@ func (m *Manager) GetIP() (string, error) {
 }
 
 func (m *Manager) GetPID() (string, error) {
-	cmd := exec.Command("lxc-info", m.config.ContainerName, "-p")
+	container, err := m.getContainer()
+	if err != nil {
+		return "", err
+	}
+
+	cmd := exec.Command("lxc-info", container.Name, "-p")
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -187,4 +243,42 @@ func (l *Lister) List() error {
 	cmd.Stderr = os.Stderr
 
 	return cmd.Run()
+}
+
+// ListRedwayContainers lists all containers managed by Redway
+func (l *Lister) ListRedwayContainers() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %v", err)
+	}
+
+	if len(cfg.Containers) == 0 {
+		fmt.Println("No containers configured")
+		return nil
+	}
+
+	fmt.Println("Redway Containers:")
+	fmt.Println("==================")
+
+	for _, container := range cfg.ListContainers() {
+		status := "Not initialized"
+		if container.Initialized {
+			status = "Initialized"
+		}
+
+		mgr := NewManagerForContainer(container.Name)
+		running := "Stopped"
+		if mgr.IsRunning() {
+			running = "Running"
+		}
+
+		fmt.Printf("\nName:        %s\n", container.Name)
+		fmt.Printf("Image:       %s\n", container.ImageURL)
+		fmt.Printf("Status:      %s\n", status)
+		fmt.Printf("Running:     %s\n", running)
+		fmt.Printf("Data Path:   %s\n", container.DataPath)
+		fmt.Printf("Log File:    %s\n", container.LogFile)
+	}
+
+	return nil
 }

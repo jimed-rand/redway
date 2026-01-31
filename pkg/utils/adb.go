@@ -7,18 +7,20 @@ import (
 )
 
 type AdbManager struct {
-	manager *container.Manager
+	manager       *container.Manager
+	containerName string
 }
 
-func NewAdbManager() *AdbManager {
+func NewAdbManager(containerName string) *AdbManager {
 	return &AdbManager{
-		manager: container.NewManager(),
+		manager:       container.NewManagerForContainer(containerName),
+		containerName: containerName,
 	}
 }
 
 func (a *AdbManager) ShowConnection() error {
 	if !a.manager.IsRunning() {
-		return fmt.Errorf("The container is not running. Start it with 'redway start'")
+		return fmt.Errorf("The container '%s' is not running. Start it with 'redway start %s'", a.containerName, a.containerName)
 	}
 
 	ip, err := a.manager.GetIP()

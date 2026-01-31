@@ -10,35 +10,96 @@ import (
 	"redway/pkg/config"
 )
 
-type Initializer struct {
+// LXCPreparer handles LXC system-level setup (one-time setup)
+type LXCPreparer struct {
 	config *config.Config
-	image  string
 }
 
-func NewInitializer(image string) *Initializer {
-	cfg, _ := config.Load()
-	cfg.ImageURL = image
+// Initializer handles individual container initialization
+type Initializer struct {
+	config    *config.Config
+	container *config.Container
+}
 
-	return &Initializer{
+func NewLXCPreparer() *LXCPreparer {
+	cfg, _ := config.Load()
+	return &LXCPreparer{
 		config: cfg,
-		image:  image,
 	}
 }
 
-func (i *Initializer) Initialize() error {
-	fmt.Println("Initializing the container...")
-	fmt.Printf("Image: %s\n", i.image)
-	fmt.Printf("Container: %s\n\n", i.config.ContainerName)
+func NewInitializer(containerName, image string) *Initializer {
+	cfg, _ := config.Load()
+
+	container := cfg.GetContainer(containerName)
+	if container == nil {
+		container = &config.Container{
+			Name:        containerName,
+			ImageURL:    image,
+			DataPath:    config.GetDefaultDataPath(containerName),
+			LogFile:     containerName + ".log",
+			GPUMode:     config.DefaultGPUMode,
+			Initialized: false,
+		}
+		cfg.AddContainer(container)
+	} else {
+		container.ImageURL = image
+	}
+
+	return &Initializer{
+		config:    cfg,
+		container: container,
+	}
+}
+
+// PrepareLXC sets up the LXC system (kernel modules, networking, tools)
+// This should be run once before creating any containers
+func (p *LXCPreparer) PrepareLXC() error {
+	fmt.Println("Preparing LXC system...")
 
 	steps := []struct {
 		name string
 		fn   func() error
 	}{
-		{"Checking kernel modules", i.checkKernelModules},
-		{"Checking LXC tools", i.checkLXCTools},
-		{"Setting up LXC networking", i.setupLXCNetworking},
-		{"Adjusting OCI template", i.adjustOCITemplate},
-		{"Checking required tools", i.checkRequiredTools},
+		{"Checking kernel modules", p.checkKernelModules},
+		{"Checking LXC tools", p.checkLXCTools},
+		{"Setting up LXC networking", p.setupLXCNetworking},
+		{"Preparing LXC capabilities", p.prepareLXCCapabilities},
+		{"Adjusting OCI template", p.adjustOCITemplate},
+		{"Checking required tools", p.checkRequiredTools},
+	}
+
+	for _, step := range steps {
+		fmt.Printf("[*] %s...\n", step.name)
+		if err := step.fn(); err != nil {
+			return fmt.Errorf("%s failed: %v", step.name, err)
+		}
+	}
+
+	p.config.LXCReady = true
+	if err := config.Save(p.config); err != nil {
+		return fmt.Errorf("failed to save config: %v", err)
+	}
+
+	fmt.Println("\nLXC system prepared successfully!")
+	return nil
+}
+
+// Initialize sets up an individual container
+func (i *Initializer) Initialize() error {
+	fmt.Println("Initializing the container...")
+	fmt.Printf("Container: %s\n", i.container.Name)
+	fmt.Printf("Image: %s\n\n", i.container.ImageURL)
+
+	// Check if LXC is prepared
+	if !i.config.LXCReady {
+		return fmt.Errorf("LXC system is not prepared. Please run 'redway prepare-lxc' first as root/sudo")
+	}
+
+	steps := []struct {
+		name string
+		fn   func() error
+	}{
 		{"Creating container", i.createContainer},
 		{"Fixing container filesystem", i.fixContainerFilesystem},
 		{"Creating data directory", i.createDataDirectory},
@@ -53,21 +114,24 @@ func (i *Initializer) Initialize() error {
 		}
 	}
 
-	i.config.Initialized = true
+	i.container.Initialized = true
+	i.config.AddContainer(i.container)
 	if err := config.Save(i.config); err != nil {
 		return fmt.Errorf("failed to save config: %v", err)
 	}
 
 	fmt.Println("\nThe container has been initialized successfully!")
 	fmt.Println("\nNext steps:")
-	fmt.Printf("  redway start        # Start the container\n")
-	fmt.Printf("  redway adb-connect  # Get ADB connection info\n")
-	fmt.Printf("  redway shell        # Access container shell\n")
+	fmt.Printf("  redway start %s        # Start the container\n", i.container.Name)
+	fmt.Printf("  redway adb-connect %s  # Get ADB connection info\n", i.container.Name)
+	fmt.Printf("  redway shell %s        # Access container shell\n", i.container.Name)
 
 	return nil
 }
 
-func (i *Initializer) checkKernelModules() error {
+// LXC Preparation Methods
+
+func (p *LXCPreparer) checkKernelModules() error {
 	binderFound := false
 	binderPaths := []string{
 		"/sys/module/binder_linux",
@@ -100,7 +164,7 @@ func (i *Initializer) checkKernelModules() error {
 	return nil
 }
 
-func (i *Initializer) checkLXCTools() error {
+func (p *LXCPreparer) checkLXCTools() error {
 	tools := []string{"lxc-create", "lxc-start", "lxc-stop", "lxc-info"}
 
 	for _, tool := range tools {
@@ -113,37 +177,35 @@ func (i *Initializer) checkLXCTools() error {
 	return nil
 }
 
-func (i *Initializer) setupLXCNetworking() error {
-	if _, err := os.Stat("/sys/class/net/lxcbr0"); err == nil {
-		fmt.Println("LXC bridge (lxcbr0) already exists")
-		return i.setupNAT()
+func (p *LXCPreparer) setupLXCNetworking() error {
+	bridgeName := config.DefaultBridgeName
+	bridgeIP := config.DefaultBridgeIP
+
+	if _, err := os.Stat(fmt.Sprintf("/sys/class/net/%s", bridgeName)); err == nil {
+		fmt.Printf("LXC bridge (%s) already exists\n", bridgeName)
+		return p.setupNAT()
 	}
 
-	fmt.Println("Setting up LXC networking...")
+	fmt.Printf("Setting up LXC networking with bridge %s...\n", bridgeName)
 
-	cmd := exec.Command("systemctl", "is-enabled", "--quiet", "lxc-net")
-	if err := cmd.Run(); err != nil {
-		fmt.Println("Enabling lxc-net service...")
-		enableCmd := exec.Command("systemctl", "enable", "lxc-net")
-		if err := enableCmd.Run(); err != nil {
-			fmt.Printf("Warning: Could not enable lxc-net: %v\n", err)
+	// Attempt to use lxc-net with custom config if it's the default bridge
+	// but here the user specifically asked for redroid0.
+	// We will manually create the bridge for maximum control as requested.
+
+	commands := [][]string{
+		{"ip", "link", "add", "name", bridgeName, "type", "bridge"},
+		{"ip", "addr", "add", fmt.Sprintf("%s/24", bridgeIP), "dev", bridgeName},
+		{"ip", "link", "set", "dev", bridgeName, "up"},
+	}
+
+	for _, args := range commands {
+		cmd := exec.Command(args[0], args[1:]...)
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to run %v: %v", args, err)
 		}
 	}
 
-	cmd = exec.Command("systemctl", "is-active", "--quiet", "lxc-net")
-	if err := cmd.Run(); err != nil {
-		fmt.Println("Starting lxc-net service...")
-		startCmd := exec.Command("systemctl", "start", "lxc-net")
-		if err := startCmd.Run(); err != nil {
-			return fmt.Errorf("failed to start lxc-net: %v. Try manually: sudo systemctl start lxc-net", err)
-		}
-	}
-
-	if _, err := os.Stat("/sys/class/net/lxcbr0"); err != nil {
-		return fmt.Errorf("lxcbr0 bridge still not available after starting lxc-net")
-	}
-
-	if err := i.setupNAT(); err != nil {
+	if err := p.setupNAT(); err != nil {
 		fmt.Printf("Warning: NAT setup failed: %v\n", err)
 	}
 
@@ -151,25 +213,26 @@ func (i *Initializer) setupLXCNetworking() error {
 	return nil
 }
 
-func (i *Initializer) setupNAT() error {
-	fmt.Println("Setting up NAT for container networking...")
+func (p *LXCPreparer) setupNAT() error {
+	bridgeSubnet := config.DefaultBridgeSubnet
+	fmt.Printf("Setting up NAT for container networking (%s)...\n", bridgeSubnet)
 
-	checkCmd := exec.Command("sh", "-c", "iptables -t nat -C POSTROUTING -s 10.0.3.0/24 ! -d 10.0.3.0/24 -j MASQUERADE 2>/dev/null")
+	checkCmd := exec.Command("sh", "-c", fmt.Sprintf("iptables -t nat -C POSTROUTING -s %s ! -d %s -j MASQUERADE 2>/dev/null", bridgeSubnet, bridgeSubnet))
 	if err := checkCmd.Run(); err == nil {
 		fmt.Println("NAT rule already exists")
-		return i.ensureIPForwarding()
+		return p.ensureIPForwarding()
 	}
 
-	natCmd := exec.Command("iptables", "-t", "nat", "-A", "POSTROUTING", "-s", "10.0.3.0/24", "!", "-d", "10.0.3.0/24", "-j", "MASQUERADE")
+	natCmd := exec.Command("iptables", "-t", "nat", "-A", "POSTROUTING", "-s", bridgeSubnet, "!", "-d", bridgeSubnet, "-j", "MASQUERADE")
 	if err := natCmd.Run(); err != nil {
 		return fmt.Errorf("failed to add NAT rule: %v", err)
 	}
 
 	fmt.Println("NAT rule added successfully")
-	return i.ensureIPForwarding()
+	return p.ensureIPForwarding()
 }
 
-func (i *Initializer) ensureIPForwarding() error {
+func (p *LXCPreparer) ensureIPForwarding() error {
 	content, err := os.ReadFile("/proc/sys/net/ipv4/ip_forward")
 	if err == nil && strings.TrimSpace(string(content)) == "1" {
 		fmt.Println("IP forwarding already enabled")
@@ -194,7 +257,31 @@ func (i *Initializer) ensureIPForwarding() error {
 	return nil
 }
 
-func (i *Initializer) adjustOCITemplate() error {
+func (p *LXCPreparer) prepareLXCCapabilities() error {
+	fmt.Println("Preparing LXC capabilities...")
+
+	// 1. Ensure /etc/lxc/default.conf exists with basic networking
+	lxcConfDir := "/etc/lxc"
+	if err := os.MkdirAll(lxcConfDir, 0755); err != nil {
+		return fmt.Errorf("failed to create lxc config dir: %v", err)
+	}
+
+	defaultConf := filepath.Join(lxcConfDir, "default.conf")
+	content := fmt.Sprintf(`lxc.net.0.type = veth
+lxc.net.0.link = %s
+lxc.net.0.flags = up
+lxc.net.0.hwaddr = ee:aa:ca:fe:55:01
+`, config.DefaultBridgeName)
+
+	if err := os.WriteFile(defaultConf, []byte(content), 0644); err != nil {
+		return fmt.Errorf("failed to write default lxc config: %v", err)
+	}
+
+	fmt.Println("Default LXC configuration updated with custom bridge")
+	return nil
+}
+
+func (p *LXCPreparer) adjustOCITemplate() error {
 	templatePath := "/usr/share/lxc/templates/lxc-oci"
 
 	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
@@ -217,7 +304,7 @@ func (i *Initializer) adjustOCITemplate() error {
 	return nil
 }
 
-func (i *Initializer) checkRequiredTools() error {
+func (p *LXCPreparer) checkRequiredTools() error {
 	tools := []string{"skopeo", "umoci", "jq"}
 	missing := []string{}
 
@@ -235,21 +322,23 @@ func (i *Initializer) checkRequiredTools() error {
 	return nil
 }
 
+// Container Initialization Methods
+
 func (i *Initializer) createContainer() error {
-	containerPath := i.config.GetContainerPath()
+	containerPath := i.container.GetContainerPath()
 
 	if _, err := os.Stat(containerPath); err == nil {
 		fmt.Println("Container already exists")
 		return nil
 	}
 
-	fmt.Printf("Creating LXC container from %s...\n", i.image)
+	fmt.Printf("Creating LXC container from %s...\n", i.container.ImageURL)
 
 	cmd := exec.Command("lxc-create",
-		"-n", i.config.ContainerName,
+		"-n", i.container.Name,
 		"-t", "oci",
 		"--",
-		"-u", i.image)
+		"-u", i.container.ImageURL)
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -263,7 +352,7 @@ func (i *Initializer) createContainer() error {
 }
 
 func (i *Initializer) fixContainerFilesystem() error {
-	rootfs := i.config.GetRootfsPath()
+	rootfs := i.container.GetRootfsPath()
 
 	etcDir := filepath.Join(rootfs, "etc")
 	if err := os.MkdirAll(etcDir, 0755); err != nil {
@@ -272,7 +361,7 @@ func (i *Initializer) fixContainerFilesystem() error {
 
 	hostnamePath := filepath.Join(etcDir, "hostname")
 	if _, err := os.Stat(hostnamePath); os.IsNotExist(err) {
-		if err := os.WriteFile(hostnamePath, []byte(i.config.ContainerName+"\n"), 0644); err != nil {
+		if err := os.WriteFile(hostnamePath, []byte(i.container.Name+"\n"), 0644); err != nil {
 			return fmt.Errorf("failed to create /etc/hostname: %v", err)
 		}
 		fmt.Println("Created /etc/hostname")
@@ -280,7 +369,7 @@ func (i *Initializer) fixContainerFilesystem() error {
 
 	hostsPath := filepath.Join(etcDir, "hosts")
 	if _, err := os.Stat(hostsPath); os.IsNotExist(err) {
-		hostsContent := fmt.Sprintf("127.0.0.1 localhost\n127.0.1.1 %s\n::1 localhost ip6-localhost ip6-loopback\n", i.config.ContainerName)
+		hostsContent := fmt.Sprintf("127.0.0.1 localhost\n127.0.1.1 %s\n::1 localhost ip6-localhost ip6-loopback\n", i.container.Name)
 		if err := os.WriteFile(hostsPath, []byte(hostsContent), 0644); err != nil {
 			return fmt.Errorf("failed to create /etc/hosts: %v", err)
 		}
@@ -292,16 +381,16 @@ func (i *Initializer) fixContainerFilesystem() error {
 }
 
 func (i *Initializer) createDataDirectory() error {
-	if err := os.MkdirAll(i.config.DataPath, 0755); err != nil {
+	if err := os.MkdirAll(i.container.DataPath, 0755); err != nil {
 		return fmt.Errorf("failed to create data directory: %v", err)
 	}
 
-	fmt.Printf("Data directory: %s\n", i.config.DataPath)
+	fmt.Printf("Data directory: %s\n", i.container.DataPath)
 	return nil
 }
 
 func (i *Initializer) adjustContainerConfig() error {
-	configPath := i.config.GetConfigFilePath()
+	configPath := i.container.GetConfigFilePath()
 
 	content, err := os.ReadFile(configPath)
 	if err != nil {
@@ -319,12 +408,15 @@ func (i *Initializer) adjustContainerConfig() error {
 
 	additionalConfig := fmt.Sprintf(`
 ### Redway Configuration
+lxc.net.0.type = veth
+lxc.net.0.link = %s
+lxc.net.0.flags = up
 lxc.init.cmd = /init androidboot.hardware=redroid androidboot.redroid_gpu_mode=%s
 lxc.apparmor.profile = unconfined
 lxc.autodev = 1
 lxc.autodev.tmpfs.size = 25000000
 lxc.mount.entry = %s data none bind 0 0
-`, i.config.GPUMode, i.config.DataPath)
+`, config.DefaultBridgeName, i.container.GPUMode, i.container.DataPath)
 
 	newLines = append(newLines, additionalConfig)
 
@@ -339,7 +431,7 @@ lxc.mount.entry = %s data none bind 0 0
 }
 
 func (i *Initializer) applyNetworkingWorkaround() error {
-	workaroundPath := filepath.Join(i.config.GetRootfsPath(), "vendor", "bin", "ipconfigstore")
+	workaroundPath := filepath.Join(i.container.GetRootfsPath(), "vendor", "bin", "ipconfigstore")
 
 	if _, err := os.Stat(workaroundPath); err == nil {
 		if err := os.Remove(workaroundPath); err != nil {
