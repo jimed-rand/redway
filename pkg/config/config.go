@@ -10,9 +10,9 @@ import (
 const (
 	DefaultImageURL     = "docker://redroid/redroid:16.0.0_64only-latest"
 	DefaultGPUMode      = "guest"
-	DefaultBridgeName   = "redroid0"
-	DefaultBridgeSubnet = "10.0.4.0/24"
-	DefaultBridgeIP     = "10.0.4.1"
+	DefaultBridgeName   = "lxcbr0"
+	DefaultBridgeSubnet = "10.0.3.0/24"
+	DefaultBridgeIP     = "10.0.3.1"
 )
 
 type Container struct {

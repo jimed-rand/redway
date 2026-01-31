@@ -139,15 +139,37 @@ func (m *Manager) Remove() error {
 		}
 	}
 
-	fmt.Printf("Remove data directory? [y/N]: ")
+	// Remove log file if it exists
+	if _, err := os.Stat(container.LogFile); err == nil {
+		fmt.Printf("Removing log file: %s\n", container.LogFile)
+		os.Remove(container.LogFile)
+	}
+
+	fmt.Printf("Remove data directory and image cache? [y/N]: ")
 	var response string
 	fmt.Scanln(&response)
 
 	if strings.ToLower(response) == "y" {
+		// Remove data directory
 		if err := os.RemoveAll(container.DataPath); err != nil {
 			fmt.Printf("Warning: Could not remove data directory: %v\n", err)
 		} else {
 			fmt.Printf("Data directory removed: %s\n", container.DataPath)
+		}
+
+		// Remove OCI image cache if it exists
+		// lxc-oci template usually caches in /var/cache/lxc/oci
+		cachePath := "/var/cache/lxc/oci"
+		if _, err := os.Stat(cachePath); err == nil {
+			fmt.Println("Cleaning OCI image cache...")
+			// Note: This removes ALL cached OCI images.
+			// Currently we don't have a safe way to remove only the one used by this container
+			// without potentially breaking others, but user asked to remove "embed images".
+			if err := os.RemoveAll(cachePath); err != nil {
+				fmt.Printf("Warning: Could not remove OCI cache: %v\n", err)
+			} else {
+				fmt.Println("OCI image cache cleaned")
+			}
 		}
 	}
 

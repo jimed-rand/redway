@@ -61,6 +61,7 @@ func (p *LXCPreparer) PrepareLXC() error {
 	}{
 		{"Checking kernel modules", p.checkKernelModules},
 		{"Checking LXC tools", p.checkLXCTools},
+		{"Checking LXC networking service", p.checkLXCNetService},
 		{"Setting up LXC networking", p.setupLXCNetworking},
 		{"Preparing LXC capabilities", p.prepareLXCCapabilities},
 		{"Adjusting OCI template", p.adjustOCITemplate},
@@ -184,19 +185,37 @@ func (p *LXCPreparer) checkKernelModules() error {
 	}
 
 	if binderFound {
-		fmt.Println("Binder support (binderfs/binder module) detected")
+		fmt.Println("Binder support detected")
 		return nil
 	}
 
-	fmt.Println("Binder support (binderfs/binder module) not detected")
-	fmt.Println("You need to enable the binderfs in your kernel or install binder module.")
-	fmt.Println("                                               ")
-	fmt.Println("If container fails to start, try loading modules:")
-	fmt.Println("                                               ")
-	fmt.Println("sudo modprobe binder_linux devices=\"binder,hwbinder,vndbinder\"")
-	fmt.Println("                                               ")
-	fmt.Println("See README for more information.")
+	fmt.Println("Binder support not detected. Attempting to load module...")
+	// Try modprobe as recommended in docs
+	cmd := exec.Command("modprobe", "binder_linux", "devices=binder,hwbinder,vndbinder")
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Warning: modprobe binder_linux failed: %v\n", err)
+		fmt.Println("If you are on Ubuntu/Debian, you might need: apt install linux-modules-extra-$(uname -r)")
+		return fmt.Errorf("binder support missing and modprobe failed")
+	}
 
+	fmt.Println("Binder module loaded successfully")
+	return nil
+}
+
+func (p *LXCPreparer) checkLXCNetService() error {
+	fmt.Println("Checking lxc-net service...")
+	cmd := exec.Command("systemctl", "is-active", "lxc-net")
+	if err := cmd.Run(); err != nil {
+		fmt.Println("lxc-net service is not active. Attempting to start it...")
+		startCmd := exec.Command("systemctl", "enable", "--now", "lxc-net")
+		if err := startCmd.Run(); err != nil {
+			fmt.Printf("Warning: Could not start lxc-net: %v\n", err)
+			return nil // Continue anyway, manual networking might work
+		}
+		fmt.Println("lxc-net service started")
+	} else {
+		fmt.Println("lxc-net service is active")
+	}
 	return nil
 }
 
