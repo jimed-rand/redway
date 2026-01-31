@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	DefaultImageURL     = "docker://redroid/redroid:16.0.0_64only-latest"
+	DefaultImageURL     = "docker://redroid/redroid:13.0.0_64only-latest"
 	DefaultGPUMode      = "guest"
 	DefaultBridgeName   = "lxcbr0"
 	DefaultBridgeSubnet = "10.0.3.0/24"

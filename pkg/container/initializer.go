@@ -62,8 +62,6 @@ func (p *LXCPreparer) PrepareLXC() error {
 		{"Checking kernel modules", p.checkKernelModules},
 		{"Checking LXC tools", p.checkLXCTools},
 		{"Checking LXC networking service", p.checkLXCNetService},
-		{"Setting up LXC networking", p.setupLXCNetworking},
-		{"Preparing LXC capabilities", p.prepareLXCCapabilities},
 		{"Adjusting OCI template", p.adjustOCITemplate},
 		{"Checking required tools", p.checkRequiredTools},
 	}
@@ -568,16 +566,13 @@ func (i *Initializer) adjustContainerConfig() error {
 	}
 
 	additionalConfig := fmt.Sprintf(`
-### Redway Configuration
-lxc.net.0.type = veth
-lxc.net.0.link = %s
-lxc.net.0.flags = up
+### hacked
 lxc.init.cmd = /init androidboot.hardware=redroid androidboot.redroid_gpu_mode=%s
 lxc.apparmor.profile = unconfined
 lxc.autodev = 1
 lxc.autodev.tmpfs.size = 25000000
 lxc.mount.entry = %s data none bind 0 0
-`, config.DefaultBridgeName, i.container.GPUMode, i.container.DataPath)
+`, i.container.GPUMode, i.container.DataPath)
 
 	newLines = append(newLines, additionalConfig)
 

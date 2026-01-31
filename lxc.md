@@ -39,9 +39,9 @@ First, patch the OCI template for better compatibility, then create the containe
 # Fix OCI template compatibility
 sudo sed -i 's/set -eu/set -u/g' /usr/share/lxc/templates/lxc-oci
 
-# Create container (Android 14 example)
+# Create container (Android 13 example)
 # Versions available: 11.0.0 through 16.0.0
-sudo lxc-create -n redroid -t oci -- -u docker://redroid/redroid:14.0.0_64only-latest
+sudo lxc-create -n redroid -t oci -- -u docker://redroid/redroid:13.0.0_64only-latest
 ```
 
 ### Step 3: Configure & Fixes
@@ -55,7 +55,7 @@ mkdir -p $HOME/data-redroid
 # Clean and configure
 sudo sed -i '/lxc.include/d' /var/lib/lxc/redroid/config
 sudo tee -a /var/lib/lxc/redroid/config <<EOF
-### Redroid Configuration
+### hacked
 lxc.init.cmd = /init androidboot.hardware=redroid androidboot.redroid_gpu_mode=guest
 lxc.apparmor.profile = unconfined
 lxc.autodev = 1
