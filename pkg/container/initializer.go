@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"reddock/pkg/config"
+	"reddock/pkg/ui"
 )
 
 type Initializer struct {
@@ -60,22 +61,36 @@ func (i *Initializer) Initialize() error {
 		return err
 	}
 
-	steps := []struct {
-		name string
-		fn   func() error
-	}{
-		{"Checking Runtime installation", i.checkRuntime},
-		{"Checking kernel modules", i.checkKernelModules},
-		{"Pulling Redroid image", i.pullImage},
-		{"Creating data directory", i.createDataDirectory},
+	// Step 1: Check System Requirements
+	s1 := ui.NewSpinner("Checking system requirements...")
+	s1.Start()
+
+	if err := i.checkRuntime(); err != nil {
+		return fmt.Errorf("Runtime check failed: %v", err)
 	}
 
-	for _, step := range steps {
-		fmt.Printf("[-] %s...\n", step.name)
-		if err := step.fn(); err != nil {
-			return fmt.Errorf("%s failed: %v", step.name, err)
-		}
+	if err := i.checkKernelModules(); err != nil {
+		// checkKernelModules handles its own warnings/errors internally usually, but returns nil
+		// If it actually returns error, we stop.
+		return fmt.Errorf("Kernel module check failed: %v", err)
 	}
+	s1.Finish("System requirements met")
+
+	// Step 2: Pull Image (Native Progress)
+	fmt.Printf("Pulling image %s...\n", i.container.ImageURL)
+	if err := i.pullImage(); err != nil {
+		return fmt.Errorf("Failed to pull image: %v", err)
+	}
+	fmt.Println("Image pulled successfully")
+
+	// Step 3: Setup Environment
+	s2 := ui.NewSpinner("Setting up container environment...")
+	s2.Start()
+
+	if err := i.createDataDirectory(); err != nil {
+		return fmt.Errorf("Failed to create data directory: %v", err)
+	}
+	s2.Finish("Environment setup complete")
 
 	i.container.Initialized = true
 	i.config.AddContainer(i.container)
@@ -96,7 +111,6 @@ func (i *Initializer) checkRuntime() error {
 	if !i.runtime.IsInstalled() {
 		return fmt.Errorf("%s is not found. Please install Docker or Podman", i.runtime.Name())
 	}
-	fmt.Printf("Using runtime: %s\n", i.runtime.Name())
 	return nil
 }
 
@@ -117,16 +131,14 @@ func (i *Initializer) checkKernelModules() error {
 	}
 
 	if binderFound {
-		fmt.Println("Binder support detected")
+		// Binder found, silent success
 	} else {
-		fmt.Println("Binder support not detected. Attempting to load module...")
 		// Try to load, but don't fail if we can't (might be in container or handled by host)
 		cmd := exec.Command("modprobe", "binder_linux", "devices=binder,hwbinder,vndbinder")
 		if err := cmd.Run(); err != nil {
+			fmt.Println() // Break line from progress bar
 			fmt.Printf("Warning: modprobe binder_linux failed: %v\n", err)
 			fmt.Println("You need to prepare the binder/binderfs first before using it.")
-		} else {
-			fmt.Println("Binder module loaded successfully")
 		}
 	}
 
@@ -134,7 +146,6 @@ func (i *Initializer) checkKernelModules() error {
 }
 
 func (i *Initializer) pullImage() error {
-	fmt.Printf("Pulling the image %s...\n", i.container.ImageURL)
 	return i.runtime.PullImage(i.container.ImageURL)
 }
 
@@ -142,8 +153,6 @@ func (i *Initializer) createDataDirectory() error {
 	if err := os.MkdirAll(i.container.DataPath, 0755); err != nil {
 		return fmt.Errorf("Failed to create data directory: %v", err)
 	}
-
-	fmt.Printf("Data directory: %s\n", i.container.DataPath)
 	return nil
 }
 

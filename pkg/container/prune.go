@@ -2,6 +2,7 @@ package container
 
 import (
 	"fmt"
+	"reddock/pkg/ui"
 )
 
 type Pruner struct {
@@ -19,11 +20,18 @@ func (p *Pruner) Prune() error {
 		return err
 	}
 
-	fmt.Printf("Pruning unused images using %s...\n", p.runtime.Name())
-	if err := p.runtime.PruneImages(); err != nil {
-		return fmt.Errorf("failed to prune images: %v", err)
+	msg := fmt.Sprintf("Pruning unused images using %s...", p.runtime.Name())
+	s := ui.NewSpinner(msg)
+	s.Start()
+	output, err := p.runtime.PruneImages()
+	if err != nil {
+		return fmt.Errorf("Failed to prune images: %v", err)
+	}
+	s.Finish("Unused images have been pruned successfully")
+
+	if output != "" {
+		fmt.Println(output)
 	}
 
-	fmt.Println("Unused images have been pruned successfully.")
 	return nil
 }

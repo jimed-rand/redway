@@ -1,6 +1,7 @@
 package container
 
 import (
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -17,7 +18,7 @@ type Runtime interface {
 	Inspect(containerName string, format string) (string, error)
 	Exists(containerName string) bool
 	IsRunning(containerName string) bool
-	PruneImages() error
+	PruneImages() (string, error)
 }
 
 type GenericRuntime struct {
@@ -47,6 +48,8 @@ func (r *GenericRuntime) IsInstalled() bool {
 
 func (r *GenericRuntime) PullImage(image string) error {
 	cmd := r.Command("pull", image)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
 
@@ -97,6 +100,11 @@ func (r *GenericRuntime) IsRunning(containerName string) bool {
 	return state == "true"
 }
 
-func (r *GenericRuntime) PruneImages() error {
-	return r.Command("image", "prune", "-f").Run()
+func (r *GenericRuntime) PruneImages() (string, error) {
+	cmd := r.Command("image", "prune", "-f")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(output), nil
 }

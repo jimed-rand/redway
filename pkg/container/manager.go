@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"reddock/pkg/config"
+	"reddock/pkg/ui"
 )
 
 type Manager struct {
@@ -60,7 +61,15 @@ func (m *Manager) Start(verbose bool) error {
 	exists := m.runtime.Exists(container.Name)
 
 	if exists {
-		fmt.Printf("Starting existing container '%s'...\n", container.Name)
+		msg := fmt.Sprintf("Starting existing container '%s'...", container.Name)
+		if verbose {
+			fmt.Println(msg)
+		} else {
+			s := ui.NewSpinner(msg)
+			s.Start()
+			defer s.Finish("Container started successfully")
+		}
+
 		startCmd := m.runtime.Command("start", container.Name)
 		if verbose {
 			startCmd.Stdout = os.Stdout
@@ -70,7 +79,14 @@ func (m *Manager) Start(verbose bool) error {
 			return fmt.Errorf("Failed to start existing container: %v", err)
 		}
 	} else {
-		fmt.Printf("Creating and starting new container '%s'...\n", container.Name)
+		msg := fmt.Sprintf("Creating and starting new container '%s'...", container.Name)
+		if verbose {
+			fmt.Println(msg)
+		} else {
+			s := ui.NewSpinner(msg)
+			s.Start()
+			defer s.Finish("Container created and started successfully")
+		}
 
 		// Map GPU mode to redroid param
 		gpuParam := "auto"
@@ -98,9 +114,8 @@ func (m *Manager) Start(verbose bool) error {
 		}
 	}
 
-	fmt.Println("The Container started successfully")
-
 	if verbose {
+		fmt.Println("The Container started successfully")
 		fmt.Println("Showing logs (Press Ctrl+C to stop)...")
 		logCmd := m.runtime.Command("logs", "-f", container.Name)
 		logCmd.Stdout = os.Stdout
@@ -129,12 +144,16 @@ func (m *Manager) Stop() error {
 		return nil
 	}
 
-	fmt.Printf("Stopping the container '%s'...\n", container.Name)
+	msg := fmt.Sprintf("Stopping the container '%s'...", container.Name)
+	s := ui.NewSpinner(msg)
+	s.Start()
+
 	if err := m.runtime.Stop(container.Name); err != nil {
+		// Stop returns error?
 		return fmt.Errorf("failed to stop container: %v", err)
 	}
+	s.Finish("Container stopped successfully")
 
-	fmt.Println("The container stopped successfully")
 	return nil
 }
 
