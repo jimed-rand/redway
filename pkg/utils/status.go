@@ -58,6 +58,10 @@ func (s *StatusManager) Show() error {
 		if ip, err := s.manager.GetIP(); err == nil {
 			fmt.Printf("\nADB Connection:\n")
 			fmt.Printf("  adb connect %s:5555\n", ip)
+		} else {
+			fmt.Printf("\nADB Connection:\n")
+			fmt.Printf("  Waiting for IP address (Android may still be booting)...\n")
+			fmt.Printf("  Try running 'redway adb-connect %s' in a few moments.\n", cont.Name)
 		}
 
 		if pid, err := s.manager.GetPID(); err == nil {

@@ -233,13 +233,25 @@ func (m *Manager) GetIP() (string, error) {
 	}
 
 	lines := strings.Split(string(output), "\n")
+	var ipv4 string
 	for _, line := range lines {
 		if strings.Contains(line, "IP:") {
 			parts := strings.Fields(line)
 			if len(parts) >= 2 {
-				return parts[1], nil
+				ip := parts[1]
+				// Prefer IPv4 (doesn't contain ':')
+				if !strings.Contains(ip, ":") {
+					return ip, nil
+				}
+				if ipv4 == "" {
+					ipv4 = ip
+				}
 			}
 		}
+	}
+
+	if ipv4 != "" {
+		return ipv4, nil
 	}
 
 	return "", fmt.Errorf("no IP address found")

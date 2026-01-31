@@ -326,6 +326,7 @@ func (p *LXCPreparer) prepareLXCCapabilities() error {
 	content := fmt.Sprintf(`lxc.net.0.type = veth
 lxc.net.0.link = %s
 lxc.net.0.flags = up
+lxc.net.0.name = eth0
 `, config.DefaultBridgeName)
 
 	if err := os.WriteFile(defaultConf, []byte(content), 0644); err != nil {
@@ -529,7 +530,7 @@ func (i *Initializer) adjustContainerConfig() error {
 	var newLines []string
 
 	for _, line := range lines {
-		if !strings.Contains(line, "lxc.include") {
+		if !strings.Contains(line, "lxc.include") && !strings.Contains(line, "lxc.net.0") {
 			newLines = append(newLines, line)
 		}
 	}
@@ -539,6 +540,7 @@ func (i *Initializer) adjustContainerConfig() error {
 lxc.net.0.type = veth
 lxc.net.0.link = %s
 lxc.net.0.flags = up
+lxc.net.0.name = eth0
 lxc.init.cmd = /init androidboot.hardware=redroid androidboot.redroid_gpu_mode=%s
 lxc.apparmor.profile = unconfined
 lxc.autodev = 1
