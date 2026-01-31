@@ -1,12 +1,20 @@
 # Redway - Native LXC Container Manager for Redroid
 
-Redway is a lightweight Go-based **LXC container manager** for [redroid](https://github.com/remote-android/redroid-doc). It provides a streamlined CLI for managing Android containers using native LXC instead of Docker. Redway handles OCI image fetching via skopeo/umoci and automatically detects binder support across distributions. Designed for performance, it enables efficient Android virtualization on every Linux distribution with LXC support. Redway offers a robust, low-overhead environment for running Redroid with native speed and reliability.
+Redway is a lightweight Go-based **LXC container manager** for
+[redroid](https://github.com/remote-android/redroid-doc). It provides a
+streamlined CLI for managing Android containers using native LXC instead of
+Docker. Redway handles OCI image fetching via skopeo/umoci and automatically
+detects binder support across distributions. Designed for performance, it
+enables efficient Android virtualization on every Linux distribution with LXC
+support. Redway offers a robust, low-overhead environment for running Redroid
+with native speed and reliability.
 
 ## Key Features
 
 - **Pure LXC Implementation** - Uses native LXC containers, not Docker
 - **OCI Image Support** - Fetches images from OCI registries via skopeo/umoci
-- **Cross-Distro Compatible** - Works on every Linux distribution with LXC support and binder support (binderfs/binder module)
+- **Cross-Distro Compatible** - Works on every Linux distribution with LXC
+  support and binder support (binderfs/binder module)
 - **Simple CLI Interface** - Easy-to-use command-line tool
 - **ADB Integration** - Built-in ADB connection management
 - **Persistent Storage** - Android data persists across container restarts
@@ -14,7 +22,13 @@ Redway is a lightweight Go-based **LXC container manager** for [redroid](https:/
 
 ## What is Redroid?
 
-[Redroid](https://github.com/remote-android/redroid-doc) (Remote Android) is a GPU-accelerated **AIC (Android In Container)** solution that allows you to run Android in containers with near-native performance. By sharing the host's kernel and leveraging hardware acceleration, Redroid provides a high-density, low-latency environment for Android virtualization without the overhead of a traditional hypervisor or emulator. It is commonly used for cloud gaming, automated testing, and virtual mobile infrastructure.
+[Redroid](https://github.com/remote-android/redroid-doc) (Remote Android) is a
+GPU-accelerated **AIC (Android In Container)** solution that allows you to run
+Android in containers with near-native performance. By sharing the host's kernel
+and leveraging hardware acceleration, Redroid provides a high-density,
+low-latency environment for Android virtualization without the overhead of a
+traditional hypervisor or emulator. It is commonly used for cloud gaming,
+automated testing, and virtual mobile infrastructure.
 
 ## Architecture
 
@@ -48,9 +62,10 @@ Redway uses a pure LXC-based approach:
 
 ### System Requirements
 
-- Linux kernel with binder support (binderfs or binder module via DKMS or KMP for openSUSE)
+- Linux kernel with binder support (binderfs or binder module via DKMS or KMP
+  for openSUSE)
 - LXC tools installed (lxc-utils)
-- Root/sudo privileges
+- Root access (use `su -`, **not** `sudo` for lifecycle operations)
 - OCI image (e.g. docker://redroid/redroid:16.0.0_64only-latest)
 - ADB (for ADB connection management)
 - Any Intel CPU with VT-x enabled or AMD CPU with SVM enabled
@@ -58,7 +73,9 @@ Redway uses a pure LXC-based approach:
 
 ### Binder Support
 
-Redroid requires **binder** kernel support both **binderfs** or **binder module** via DKMS or KMP for openSUSE. Redway will check for binder support during initialization and provide guidance if not detected.
+Redroid requires **binder** kernel support both **binderfs** or **binder
+module** via DKMS or KMP for openSUSE. Redway will check for binder support
+during initialization and provide guidance if not detected.
 
 #### Checking Binder Support
 
@@ -78,13 +95,11 @@ lsmod | grep binder # Check if modules are loaded
 #### Persistent Module Loading (if using modules)
 
 # Create module configuration
-sudo tee /etc/modules-load.d/binder.conf <<EOF
-binder_linux
-EOF
 
-sudo tee /etc/modprobe.d/binder.conf <<EOF
-options binder_linux devices="binder,hwbinder,vndbinder"
-EOF
+sudo tee /etc/modules-load.d/binder.conf <<EOF binder_linux EOF
+
+sudo tee /etc/modprobe.d/binder.conf <<EOF options binder_linux
+devices="binder,hwbinder,vndbinder" EOF
 
 > **Note:** If your kernel has built-in binder support (common on Arch and
 > custom kernels), you don't need to load modules. Redway will detect this
@@ -127,7 +142,10 @@ sudo zypper install lxc skopeo umoci jq
 git clone https://github.com/jimed-rand/redway.git
 cd redway
 make build
-sudo make install
+# Become root properly to install
+su -
+# cd back to redway directory from your root shell and run:
+make install
 ```
 
 ### Manual Compilation
@@ -149,20 +167,23 @@ sudo cp redway /usr/local/bin/
 
 ### 1. Load Kernel Modules
 
-**Before using Redway, you must load the required kernel modules. This was already explained at [Binder Support](#binder-support) section.**
+**Before using Redway, you must load the required kernel modules. This was
+already explained at [Binder Support](#binder-support) section.**
 
 ### 2. Initialize LXC Container
 
 Using default image (Android 16):
 
 ```bash
-sudo redway init
+# Become root properly
+su - 
+redway init
 ```
 
 Using specific image (e.g. Android 16):
 
 ```bash
-sudo redway init docker://redroid/redroid:16.0.0_64only-latest
+redway init docker://redroid/redroid:16.0.0_64only-latest
 ```
 
 Available redroid images:
@@ -189,7 +210,7 @@ Available redroid images:
 ### 3. Start Container
 
 ```bash
-sudo redway start
+redway start
 ```
 
 ### 4. Connect via ADB
@@ -217,12 +238,15 @@ adb install app.apk
 ### Container Management
 
 ```bash
-sudo redway init [image path]     # Initialize new LXC container
-sudo redway start                 # Start container
-sudo redway stop                  # Stop container
-sudo redway restart               # Restart container
-sudo redway remove                # Remove container
+redway init [image path]     # Initialize new LXC container
+redway start                 # Start container
+redway stop                  # Stop container
+redway restart               # Restart container
+redway remove                # Remove container
 ```
+
+> **IMPORTANT:** All the above commands **must** be run as root (use `su -`).
+> Running with `sudo` is explicitly blocked to prevent environment pollution.
 
 ### Information & Debugging
 
@@ -236,7 +260,7 @@ redway adb-connect           # Display ADB connection info
 ### Direct Access
 
 ```bash
-sudo redway shell            # Enter container via nsenter
+redway shell            # Enter container via nsenter
 ```
 
 ## Configuration
@@ -335,7 +359,9 @@ lxc.mount.entry = /home/user/data-redroid data none bind 0 0
 
 ### Container won't start due to missing kernel modules or something else
 
-Make sure that you have loaded the required kernel modules. This was already explained at [Binder Support](#binder-support) section. If you think that's something else, check at `redway log`.
+Make sure that you have loaded the required kernel modules. This was already
+explained at [Binder Support](#binder-support) section. If you think that's
+something else, check at `redway log`.
 
 ### No IP address found
 
@@ -361,11 +387,9 @@ adb connect <IP>:5555
 
 ### Permission issues
 
-Always use sudo for container operations:
-
-```bash
-sudo redway start
-```
+Always use `su -` for container operations. Using `sudo` is blocked by design to
+ensure `$HOME` and other environment variables point to the root user, which is
+required for LXC mapping and persistence.
 
 ## Advanced Usage
 
@@ -391,7 +415,8 @@ Edit container name in config before initializing:
 
 ### Direct LXC Access
 
-This step is only for advanced users only. You can access the container directly using `nsenter` or `lxc-attach`.
+This step is only for advanced users only. You can access the container directly
+using `nsenter` or `lxc-attach`.
 
 ```bash
 # Using nsenter
@@ -409,33 +434,54 @@ sudo lxc-ls -f
 
 ### Ubuntu/Debian
 
-- **Kernel Modules**: Ensure `linux-modules-extra-$(uname -r)` is installed to provide necessary drivers for containerized environments.
-- **Networking**: The `lxc-net` service is usually pre-configured. If `lxcbr0` is missing, run `sudo systemctl enable --now lxc-net`.
-- **Dependencies**: `skopeo` and `umoci` are available in standard repositories since Ubuntu 20.04+.
+- **Kernel Modules**: Ensure `linux-modules-extra-$(uname -r)` is installed to
+  provide necessary drivers for containerized environments.
+- **Networking**: The `lxc-net` service is usually pre-configured. If `lxcbr0`
+  is missing, run `sudo systemctl enable --now lxc-net`.
+- **Dependencies**: `skopeo` and `umoci` are available in standard repositories
+  since Ubuntu 20.04+.
 
 ### Arch Linux
 
-- **Services**: You must manually enable the networking bridge: `sudo systemctl enable --now lxc-net`.
+- **Services**: You must manually enable the networking bridge:
+  `sudo systemctl enable --now lxc-net`.
 - **Kernel**: If using the LTS kernel, ensure `linux-lts-headers` are installed.
 - **Dependencies**: Install `skopeo` and `umoci` from the official repositories.
 
 ### Fedora
 
-- **SELinux**: Fedora's strict SELinux policy may prevent Android's `init` from mounting filesystems. You may need to set SELinux to permissive mode (`setenforce 0`) or use `lxc.apparmor.profile = unconfined`.
-- **Cgroups**: Fedora uses cgroup v2 by default. If the container fails to start, you might need to revert to cgroup v1 using the kernel parameter `systemd.unified_cgroup_hierarchy=0`.
-- **Kernel**: Install `kernel-modules-extra` to ensure binder support is available.
+- **SELinux**: Fedora's strict SELinux policy may prevent Android's `init` from
+  mounting filesystems. You may need to set SELinux to permissive mode
+  (`setenforce 0`) or use `lxc.apparmor.profile = unconfined`.
+- **Cgroups**: Fedora uses cgroup v2 by default. If the container fails to
+  start, you might need to revert to cgroup v1 using the kernel parameter
+  `systemd.unified_cgroup_hierarchy=0`.
+- **Kernel**: Install `kernel-modules-extra` to ensure binder support is
+  available.
 
 ### openSUSE
 
-- **Firewall**: `firewalld` often blocks the LXC bridge. Add the interface to the trusted zone: `sudo firewall-cmd --zone=trusted --add-interface=lxcbr0 --permanent`.
-- **Subuid/Subgid**: Ensure your user has entries in `/etc/subuid` and `/etc/subgid` even when running with sudo to avoid mapping issues.
+- **Firewall**: `firewalld` often blocks the LXC bridge. Add the interface to
+  the trusted zone:
+  `sudo firewall-cmd --zone=trusted --add-interface=lxcbr0 --permanent`.
+- **Subuid/Subgid**: Ensure your user has entries in `/etc/subuid` and
+  `/etc/subgid` even when running with sudo to avoid mapping issues.
 
 ## Known Limitations
 
-- **Kernel Requirements**: Requires a kernel with `binder` and `ashmem` support (or `binderfs`). Most modern desktop kernels include these, but stripped-down VPS kernels may not.
-- **Root Access**: Due to the way LXC manages network bridges and device nodes (`/dev/binder`, `/dev/ashmem`), `sudo` is required for most lifecycle operations.
-- **GPU Passthrough**: `gpu_mode: host` requires the host to have compatible Vulkan/EGL drivers. Intel and AMD (Mesa) generally work better than Nvidia in this specific LXC setup.
-- **Architecture**: Ensure the image architecture (e.g., `64only`) matches your hardware capabilities.
+- **Kernel Requirements**: Requires a kernel with `binder` and `ashmem` support
+  (or `binderfs`). Most modern desktop kernels include these, but stripped-down
+  VPS kernels may not.
+- **Root Access**: Due to the way LXC manages network bridges and device nodes
+  (`/dev/binder`, `/dev/ashmem`), running as root is required. **You must use
+  `su -` or login as root directly.** Using `sudo redway` is explicitly blocked
+  to avoid issues where `PATH` or `$HOME` are not correctly set for the root
+  shell.
+- **GPU Passthrough**: `gpu_mode: host` requires the host to have compatible
+  Vulkan/EGL drivers. Intel and AMD (Mesa) generally work better than Nvidia in
+  this specific LXC setup.
+- **Architecture**: Ensure the image architecture (e.g., `64only`) matches your
+  hardware capabilities.
 
 ## Why LXC Instead of Docker?
 
@@ -450,11 +496,36 @@ Redway uses LXC for several reasons:
 
 ## Contributing
 
-Contributions to Redway are warmly welcomed and play a crucial role in the project's evolution. We invite developers of all skill levels to participate in enhancing our LXC-based Android management tool. To ensure the project remains robust and maintainable, we ask that all contributions adhere to a set of core guidelines. First, please ensure that all code follows standard Go idioms and formatting; consistency in the codebase allows for easier peer reviews and long-term stability. Second, maintaining cross-distribution compatibility is a top priority for Redway. Your changes should be verified across multiple Linux environments to ensure that users on Ubuntu, Arch, Fedora, and other distributions experience the same reliable performance. Third, documentation is essential for a project with this level of technical depth.
+Contributions to Redway are warmly welcomed and play a crucial role in the
+project's evolution. We invite developers of all skill levels to participate in
+enhancing our LXC-based Android management tool. To ensure the project remains
+robust and maintainable, we ask that all contributions adhere to a set of core
+guidelines. First, please ensure that all code follows standard Go idioms and
+formatting; consistency in the codebase allows for easier peer reviews and
+long-term stability. Second, maintaining cross-distribution compatibility is a
+top priority for Redway. Your changes should be verified across multiple Linux
+environments to ensure that users on Ubuntu, Arch, Fedora, and other
+distributions experience the same reliable performance. Third, documentation is
+essential for a project with this level of technical depth.
 
-If your contribution introduces new configuration options, commands, or architectural changes, please update the README and relevant documentation files accordingly. Fourth, we emphasize clean system integration: please avoid hardcoded kernel module loading or distribution-specific assumptions, as Redway aims to be a flexible wrapper that respects the host's configuration. Beyond these technical requirements, we encourage open communication. If you find a bug or have a vision for a new feature, opening an issue is the best way to start a conversation with the maintainers. When submitting a pull request, provide a comprehensive description of your work and the testing you have conducted.
+If your contribution introduces new configuration options, commands, or
+architectural changes, please update the README and relevant documentation files
+accordingly. Fourth, we emphasize clean system integration: please avoid
+hardcoded kernel module loading or distribution-specific assumptions, as Redway
+aims to be a flexible wrapper that respects the host's configuration. Beyond
+these technical requirements, we encourage open communication. If you find a bug
+or have a vision for a new feature, opening an issue is the best way to start a
+conversation with the maintainers. When submitting a pull request, provide a
+comprehensive description of your work and the testing you have conducted.
 
-We are committed to fostering a collaborative and inclusive community where every contribution, whether it is a small typo fix or a major feature implementation, is valued. By contributing to Redway, you are helping to build a more efficient and accessible way to run Android in containerized environments. All contributions are released under the GPL-2.0 License, preserving the open-source nature of the project for everyone. We look forward to your pull requests and to working together to make Redway the premier choice for redroid orchestration.
+We are committed to fostering a collaborative and inclusive community where
+every contribution, whether it is a small typo fix or a major feature
+implementation, is valued. By contributing to Redway, you are helping to build a
+more efficient and accessible way to run Android in containerized environments.
+All contributions are released under the GPL-2.0 License, preserving the
+open-source nature of the project for everyone. We look forward to your pull
+requests and to working together to make Redway the premier choice for redroid
+orchestration.
 
 ## License
 
@@ -473,6 +544,7 @@ GPL-2.0 License
 - Redroid Documentation: https://github.com/remote-android/redroid-doc
 - LXC Documentation: https://linuxcontainers.org/lxc/documentation/
 - LXC Getting Started: https://linuxcontainers.org/lxc/getting-started/
-- LXC Configuration: https://linuxcontainers.org/lxc/manpages/man5/lxc.container.conf.5.html
+- LXC Configuration:
+  https://linuxcontainers.org/lxc/manpages/man5/lxc.container.conf.5.html
 - LXC Command Line: https://linuxcontainers.org/lxc/manpages/man1/
 - OCI Image Spec: https://github.com/opencontainers/image-spec

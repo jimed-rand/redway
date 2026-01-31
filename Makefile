@@ -62,7 +62,7 @@ dist: check-linux build
 	@echo "Distribution package: dist/$(BINARY)-$(VERSION)-linux-amd64.tar.gz"
 
 run: build
-	@echo "Note: Some commands require sudo (init, start, prepare-lxc)"
+	@echo "Note: Some commands require root privileges (use 'su -')"
 	./$(BINARY) $(ARGS)
 
 install: check-linux build
@@ -71,9 +71,11 @@ install: check-linux build
 	@echo "Installation complete!"
 	@echo ""
 	@echo "Quick Start:"
-	@echo "  sudo redway prepare-lxc             # Setup LXC environment"
-	@echo "  sudo redway init <name>             # Initialize a container"
-	@echo "  sudo redway start <name>            # Start the container"
+	@echo "  # Become root properly"
+	@echo "  su -"
+	@echo "  redway prepare-lxc             # Setup LXC environment"
+	@echo "  redway init <name>             # Initialize a container"
+	@echo "  redway start <name>            # Start the container"
 	@echo "  redway list                         # List managed containers"
 
 uninstall:
