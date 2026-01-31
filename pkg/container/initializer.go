@@ -537,6 +537,7 @@ func (i *Initializer) adjustContainerConfig() error {
 
 	additionalConfig := fmt.Sprintf(`
 ### hacked
+lxc.uts.name = %s
 lxc.net.0.type = veth
 lxc.net.0.link = %s
 lxc.net.0.flags = up
@@ -546,9 +547,16 @@ lxc.apparmor.profile = unconfined
 lxc.autodev = 1
 lxc.autodev.tmpfs.size = 25000000
 lxc.mount.entry = %s data none bind 0 0
-`, config.DefaultBridgeName, i.container.GPUMode, i.container.DataPath)
+`, i.container.Name, config.DefaultBridgeName, i.container.GPUMode, i.container.DataPath)
 
 	newLines = append(newLines, additionalConfig)
+
+	// Ensure basic /etc/hosts exists in rootfs
+	hostsPath := filepath.Join(i.container.GetRootfsPath(), "etc", "hosts")
+	hostsContent := fmt.Sprintf("127.0.0.1\tlocalhost\n::1\t\tlocalhost\n127.0.1.1\t%s\n", i.container.Name)
+	if err := os.WriteFile(hostsPath, []byte(hostsContent), 0644); err != nil {
+		fmt.Printf("Warning: Could not write /etc/hosts: %v\n", err)
+	}
 
 	finalContent := strings.Join(newLines, "\n")
 

@@ -83,15 +83,22 @@ func (c *Command) executeInit() error {
 
 func (c *Command) executeStart() error {
 	var containerName string
+	verbose := false
 
-	if len(c.Args) > 0 {
-		containerName = c.Args[0]
-	} else {
-		return fmt.Errorf("container name is required. Usage: redway start <container-name>")
+	for _, arg := range c.Args {
+		if arg == "-v" || arg == "--verbose" {
+			verbose = true
+		} else if containerName == "" {
+			containerName = arg
+		}
+	}
+
+	if containerName == "" {
+		return fmt.Errorf("container name is required. Usage: redway start <container-name> [-v]")
 	}
 
 	mgr := container.NewManagerForContainer(containerName)
-	return mgr.Start()
+	return mgr.Start(verbose)
 }
 
 func (c *Command) executeStop() error {
@@ -109,15 +116,22 @@ func (c *Command) executeStop() error {
 
 func (c *Command) executeRestart() error {
 	var containerName string
+	verbose := false
 
-	if len(c.Args) > 0 {
-		containerName = c.Args[0]
-	} else {
-		return fmt.Errorf("container name is required. Usage: redway restart <container-name>")
+	for _, arg := range c.Args {
+		if arg == "-v" || arg == "--verbose" {
+			verbose = true
+		} else if containerName == "" {
+			containerName = arg
+		}
+	}
+
+	if containerName == "" {
+		return fmt.Errorf("container name is required. Usage: redway restart <container-name> [-v]")
 	}
 
 	mgr := container.NewManagerForContainer(containerName)
-	return mgr.Restart()
+	return mgr.Restart(verbose)
 }
 
 func (c *Command) executeStatus() error {
@@ -197,9 +211,9 @@ func PrintUsage() {
 	fmt.Println("  prepare-lxc                    Prepare LXC system (one-time setup)")
 	fmt.Println("  unprepare-lxc                  Clean up LXC system (reverses prepare-lxc)")
 	fmt.Println("  init <name> [image]            Initialize container (name required)")
-	fmt.Println("  start <name>                   Start container (name required)")
+	fmt.Println("  start <name> [-v]              Start container (use -v for foreground/logs)")
 	fmt.Println("  stop <name>                    Stop container (name required)")
-	fmt.Println("  restart <name>                 Restart container (name required)")
+	fmt.Println("  restart <name> [-v]            Restart container (use -v for foreground/logs)")
 	fmt.Println("  status <name>                  Show container status (name required)")
 	fmt.Println("  shell <name>                   Enter container shell (name required)")
 	fmt.Println("  adb-connect <name>             Show ADB connection command (name required)")
@@ -209,5 +223,5 @@ func PrintUsage() {
 	fmt.Println("\nExamples:")
 	fmt.Println("  sudo redway prepare-lxc")
 	fmt.Println("  sudo redway init android13")
-	fmt.Println("  sudo redway start android13")
+	fmt.Println("  sudo redway start android13 -v")
 }

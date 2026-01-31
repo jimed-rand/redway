@@ -38,7 +38,7 @@ func (m *Manager) getContainer() (*config.Container, error) {
 	return container, nil
 }
 
-func (m *Manager) Start() error {
+func (m *Manager) Start(verbose bool) error {
 	if err := CheckRoot(); err != nil {
 		return err
 	}
@@ -60,10 +60,18 @@ func (m *Manager) Start() error {
 
 	logPath := container.LogFile
 
-	cmd := exec.Command("lxc-start",
-		"-l", "debug",
-		"-o", logPath,
-		"-n", container.Name)
+	args := []string{"-n", container.Name, "-l", "debug", "-o", logPath}
+	if verbose {
+		args = append(args, "-F")
+		fmt.Println("Running in foreground mode (Press Ctrl+C to stop)")
+	}
+
+	cmd := exec.Command("lxc-start", args...)
+	if verbose {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
+	}
 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to start container: %v", err)
@@ -104,14 +112,14 @@ func (m *Manager) Stop() error {
 	return nil
 }
 
-func (m *Manager) Restart() error {
+func (m *Manager) Restart(verbose bool) error {
 	fmt.Println("Restarting the container...")
 
 	if err := m.Stop(); err != nil {
 		return err
 	}
 
-	return m.Start()
+	return m.Start(verbose)
 }
 
 func (m *Manager) Remove() error {
