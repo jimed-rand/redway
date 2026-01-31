@@ -24,6 +24,7 @@ type Addon interface {
 	Extract(version, arch string) error
 	Copy(version, arch, outputDir string) error
 	Install(version, arch, outputDir string) error
+	GetBootArgs(version, arch string) []string
 }
 
 type BaseAddon struct {
@@ -62,6 +63,10 @@ func (b *BaseAddon) IsSupported(version string) bool {
 		}
 	}
 	return false
+}
+
+func (b *BaseAddon) GetBootArgs(version, arch string) []string {
+	return nil
 }
 
 func getDownloadDir() string {

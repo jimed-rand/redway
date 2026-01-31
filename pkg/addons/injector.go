@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"reddock/pkg/config"
 )
 
 type AddonInjector struct {
@@ -93,6 +95,25 @@ func (ai *AddonInjector) InjectToContainer(containerName, addonName, version, ar
 	fmt.Printf("Setting permissions...\n")
 	if err := ai.setPermissions(containerName, addonName); err != nil {
 		fmt.Printf("Warning: Failed to set some permissions: %v\n", err)
+	}
+
+	// Update container config
+	cfg, err := config.Load()
+	if err == nil {
+		container := cfg.GetContainer(containerName)
+		if container != nil {
+			alreadyExists := false
+			for _, a := range container.Addons {
+				if a == addonName {
+					alreadyExists = true
+					break
+				}
+			}
+			if !alreadyExists {
+				container.Addons = append(container.Addons, addonName)
+				config.Save(cfg)
+			}
+		}
 	}
 
 	fmt.Printf("\n✓ Successfully injected %s into %s\n", addon.Name(), containerName)

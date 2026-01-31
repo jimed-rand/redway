@@ -20,7 +20,7 @@ type OpenGappsAddon struct {
 
 func NewOpenGappsAddon() *OpenGappsAddon {
 	versions := []string{"11.0.0"}
-	
+
 	dlLinks := map[string][]string{
 		"x86_64": {"https://sourceforge.net/projects/opengapps/files/x86_64/20220503/open_gapps-x86_64-11.0-pico-20220503.zip", "5a6d242be34ad1acf92899c7732afa1b"},
 		"x86":    {"https://sourceforge.net/projects/opengapps/files/x86/20220503/open_gapps-x86-11.0-pico-20220503.zip", "efda4943076016d00b40e0874b12ddd3"},
@@ -73,7 +73,7 @@ func (o *OpenGappsAddon) Download(version, arch string) error {
 
 func (o *OpenGappsAddon) Extract(version, arch string) error {
 	filename := filepath.Join(o.downloadDir, "open_gapps.zip")
-	
+
 	if err := ensureDir(o.extractTo); err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func (o *OpenGappsAddon) Extract(version, arch string) error {
 
 func (o *OpenGappsAddon) Copy(version, arch, outputDir string) error {
 	copyDir := filepath.Join(outputDir, "gapps")
-	
+
 	if err := os.RemoveAll(copyDir); err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func (o *OpenGappsAddon) Copy(version, arch, outputDir string) error {
 
 	for _, file := range files {
 		lzFile := file.Name()
-		
+
 		if o.shouldSkip(lzFile) {
 			continue
 		}
@@ -160,7 +160,7 @@ func (o *OpenGappsAddon) Copy(version, arch, outputDir string) error {
 
 		if !o.isNonApk(lzFile) {
 			fmt.Printf("Processing app package: %s\n", lzFile)
-			
+
 			cmd := exec.Command("tar", "--lzip", "-xvf", lzPath, "-C", appUnpackDir)
 			if err := cmd.Run(); err != nil {
 				return fmt.Errorf("failed to extract %s: %v", lzFile, err)
@@ -199,7 +199,7 @@ func (o *OpenGappsAddon) Copy(version, arch, outputDir string) error {
 			}
 		} else {
 			fmt.Printf("Processing extra package: %s\n", lzFile)
-			
+
 			cmd := exec.Command("tar", "--lzip", "-xvf", lzPath, "-C", appUnpackDir)
 			if err := cmd.Run(); err != nil {
 				return fmt.Errorf("failed to extract %s: %v", lzFile, err)
@@ -238,6 +238,12 @@ func (o *OpenGappsAddon) Install(version, arch, outputDir string) error {
 		return err
 	}
 	return o.Copy(version, arch, outputDir)
+}
+
+func (o *OpenGappsAddon) GetBootArgs(version, arch string) []string {
+	return []string{
+		"ro.setupwizard.mode=DISABLED",
+	}
 }
 
 func (o *OpenGappsAddon) isNonApk(filename string) bool {

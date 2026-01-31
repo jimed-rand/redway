@@ -17,7 +17,7 @@ type NDKAddon struct {
 
 func NewNDKAddon() *NDKAddon {
 	versions := []string{"8.1.0", "9.0.0", "10.0.0", "11.0.0", "12.0.0", "12.0.0_64only", "13.0.0", "14.0.0", "15.0.0", "16.0.0"}
-	
+
 	baseAddon := NewBaseAddon("NDK Translation", AddonTypeNDK, versions)
 	return &NDKAddon{
 		BaseAddon: baseAddon,
@@ -48,7 +48,7 @@ func (n *NDKAddon) Download(version, arch string) error {
 
 func (n *NDKAddon) Extract(version, arch string) error {
 	filename := filepath.Join(n.downloadDir, "libndktranslation.zip")
-	
+
 	if err := ensureDir(n.extractTo); err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (n *NDKAddon) Extract(version, arch string) error {
 
 func (n *NDKAddon) Copy(version, arch, outputDir string) error {
 	copyDir := filepath.Join(outputDir, "ndk")
-	
+
 	if err := os.RemoveAll(copyDir); err != nil {
 		return err
 	}
@@ -126,4 +126,30 @@ func (n *NDKAddon) Install(version, arch, outputDir string) error {
 		return err
 	}
 	return n.Copy(version, arch, outputDir)
+}
+
+func (n *NDKAddon) GetBootArgs(version, arch string) []string {
+	if version == "12.0.0_64only" {
+		return []string{
+			"androidboot.use_memfd=1",
+			"ro.product.cpu.abilist=x86_64,arm64-v8a",
+			"ro.product.cpu.abilist64=x86_64,arm64-v8a",
+			"ro.dalvik.vm.isa.arm64=x86_64",
+			"ro.enable.native.bridge.exec=1",
+			"ro.dalvik.vm.native.bridge=libndk_translation.so",
+		}
+	}
+
+	return []string{
+		"ro.product.cpu.abilist=x86_64,arm64-v8a,x86,armeabi-v7a,armeabi",
+		"ro.product.cpu.abilist64=x86_64,arm64-v8a",
+		"ro.product.cpu.abilist32=x86,armeabi-v7a,armeabi",
+		"ro.dalvik.vm.isa.arm=x86",
+		"ro.dalvik.vm.isa.arm64=x86_64",
+		"ro.enable.native.bridge.exec=1",
+		"ro.vendor.enable.native.bridge.exec=1",
+		"ro.vendor.enable.native.bridge.exec64=1",
+		"ro.dalvik.vm.native.bridge=libndk_translation.so",
+		"ro.ndk_translation.version=0.2.3",
+	}
 }

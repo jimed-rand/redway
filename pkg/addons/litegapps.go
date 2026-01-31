@@ -229,3 +229,9 @@ func (l *LiteGappsAddon) Install(version, arch, outputDir string) error {
 	}
 	return l.Copy(version, arch, outputDir)
 }
+
+func (l *LiteGappsAddon) GetBootArgs(version, arch string) []string {
+	return []string{
+		"ro.setupwizard.mode=DISABLED",
+	}
+}

@@ -67,11 +67,11 @@ func NewHoudiniAddon() *HoudiniAddon {
 
 func (h *HoudiniAddon) Download(version, arch string) error {
 	if !h.IsSupported(version) {
-		return fmt.Errorf("houdini not supported for Android %s", version)
+		return fmt.Errorf("Houdini not supported for Android %s", version)
 	}
 
 	if arch != "x86" && arch != "x86_64" {
-		return fmt.Errorf("houdini only supports x86/x86_64 architecture")
+		return fmt.Errorf("Houdini only supports x86/x86_64 architecture")
 	}
 
 	url := h.dlLinks[version]["url"][0]
@@ -145,7 +145,7 @@ func (h *HoudiniAddon) Copy(version, arch, outputDir string) error {
 	re := regexp.MustCompile(`([a-zA-Z0-9]+)\.zip`)
 	matches := re.FindStringSubmatch(url)
 	if len(matches) < 2 {
-		return fmt.Errorf("failed to extract name from URL")
+		return fmt.Errorf("Failed to extract name from URL")
 	}
 	name := matches[1]
 
@@ -178,6 +178,32 @@ func (h *HoudiniAddon) Install(version, arch, outputDir string) error {
 		return err
 	}
 	return h.Copy(version, arch, outputDir)
+}
+
+func (h *HoudiniAddon) GetBootArgs(version, arch string) []string {
+	// For 64-only images, we only set 64-bit properties
+	if version == "12.0.0_64only" || version == "13.0.0_64only" || version == "14.0.0_64only" || version == "15.0.0_64only" || version == "16.0.0_64only" {
+		return []string{
+			"androidboot.use_memfd=1",
+			"ro.product.cpu.abilist=x86_64,arm64-v8a",
+			"ro.product.cpu.abilist64=x86_64,arm64-v8a",
+			"ro.dalvik.vm.isa.arm64=x86_64",
+			"ro.enable.native.bridge.exec=1",
+			"ro.dalvik.vm.native.bridge=libhoudini.so",
+		}
+	}
+
+	return []string{
+		"ro.product.cpu.abilist=x86_64,arm64-v8a,x86,armeabi-v7a,armeabi",
+		"ro.product.cpu.abilist64=x86_64,arm64-v8a",
+		"ro.product.cpu.abilist32=x86,armeabi-v7a,armeabi",
+		"ro.dalvik.vm.isa.arm=x86",
+		"ro.dalvik.vm.isa.arm64=x86_64",
+		"ro.enable.native.bridge.exec=1",
+		"ro.vendor.enable.native.bridge.exec=1",
+		"ro.vendor.enable.native.bridge.exec64=1",
+		"ro.dalvik.vm.native.bridge=libhoudini.so",
+	}
 }
 
 func (h *HoudiniAddon) getInitRC() string {

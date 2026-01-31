@@ -24,7 +24,7 @@ func (c *Command) executeAddons() error {
 	case "inject-multi":
 		return c.executeAddonsInjectMulti(subArgs)
 	default:
-		return fmt.Errorf("unknown addons subcommand: %s", subCommand)
+		return fmt.Errorf("Unknown addons subcommand: %s", subCommand)
 	}
 }
 
@@ -68,7 +68,7 @@ func (c *Command) executeAddonsList() error {
 		addon, _ := injector.GetAddon(name)
 		versions := addon.SupportedVersions()
 		fmt.Printf("%-15s - %s\n", name, addon.Name())
-		fmt.Printf("                Supported versions: %v\n", versions)
+		fmt.Printf("Supported versions: %v\n", versions)
 		fmt.Println()
 	}
 
@@ -77,7 +77,7 @@ func (c *Command) executeAddonsList() error {
 
 func (c *Command) executeAddonsInject(args []string) error {
 	if len(args) < 2 {
-		return fmt.Errorf("usage: reddock addons inject <container-name> <addon-name>")
+		return fmt.Errorf("Command invalid! usage: reddock addons inject <container-name> <addon-name>")
 	}
 
 	containerName := args[0]
@@ -86,17 +86,17 @@ func (c *Command) executeAddonsInject(args []string) error {
 
 	cfg, err := config.Load()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %v", err)
+		return fmt.Errorf("Failed to load config: %v", err)
 	}
 
 	container := cfg.GetContainer(containerName)
 	if container == nil {
-		return fmt.Errorf("container '%s' not found", containerName)
+		return fmt.Errorf("Container '%s' not found", containerName)
 	}
 
-	version := extractVersionFromImage(container.ImageURL)
+	version := config.ExtractVersionFromImage(container.ImageURL)
 	if version == "" {
-		return fmt.Errorf("cannot determine Android version from image: %s", container.ImageURL)
+		return fmt.Errorf("Cannot determine Android version from image: %s", container.ImageURL)
 	}
 
 	injector := addons.NewAddonInjector()
@@ -107,7 +107,7 @@ func (c *Command) executeAddonsInject(args []string) error {
 
 func (c *Command) executeAddonsInjectMulti(args []string) error {
 	if len(args) < 2 {
-		return fmt.Errorf("usage: reddock addons inject-multi <container-name> <addon1> [addon2] ...")
+		return fmt.Errorf("Command invalid! usage: reddock addons inject-multi <container-name> <addon1> [addon2] ...")
 	}
 
 	containerName := args[0]
@@ -116,17 +116,17 @@ func (c *Command) executeAddonsInjectMulti(args []string) error {
 
 	cfg, err := config.Load()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %v", err)
+		return fmt.Errorf("Failed to load config: %v", err)
 	}
 
 	container := cfg.GetContainer(containerName)
 	if container == nil {
-		return fmt.Errorf("container '%s' not found", containerName)
+		return fmt.Errorf("Container '%s' not found", containerName)
 	}
 
-	version := extractVersionFromImage(container.ImageURL)
+	version := config.ExtractVersionFromImage(container.ImageURL)
 	if version == "" {
-		return fmt.Errorf("cannot determine Android version from image: %s", container.ImageURL)
+		return fmt.Errorf("Cannot determine Android version from image: %s", container.ImageURL)
 	}
 
 	injector := addons.NewAddonInjector()
@@ -144,37 +144,4 @@ func (c *Command) executeAddonsInjectMulti(args []string) error {
 	return injector.InjectMultiple(containerName, requests)
 }
 
-func extractVersionFromImage(imageURL string) string {
-	parts := strings.Split(imageURL, ":")
-	if len(parts) < 2 {
-		return ""
-	}
-
-	versionPart := parts[1]
-
-	versionPart = strings.TrimSuffix(versionPart, "-latest")
-	versionPart = strings.TrimSuffix(versionPart, "-gapps")
-	versionPart = strings.TrimSuffix(versionPart, "-ndk")
-	versionPart = strings.TrimSuffix(versionPart, "-houdini")
-	versionPart = strings.TrimSuffix(versionPart, "-magisk")
-	versionPart = strings.TrimSuffix(versionPart, "-widevine")
-
-	if strings.Contains(versionPart, "_") {
-		return versionPart
-	}
-
-	knownVersions := []string{
-		"16.0.0", "15.0.0", "14.0.0", "13.0.0", "12.0.0",
-		"11.0.0", "10.0.0", "9.0.0", "8.1.0",
-		"16.0.0_64only", "15.0.0_64only", "14.0.0_64only",
-		"13.0.0_64only", "12.0.0_64only",
-	}
-
-	for _, v := range knownVersions {
-		if strings.HasPrefix(versionPart, v) {
-			return v
-		}
-	}
-
-	return versionPart
-}
+// Removed local extractVersionFromImage in favor of utils.ExtractVersionFromImage

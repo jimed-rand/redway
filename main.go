@@ -7,8 +7,6 @@ import (
 	"reddock/cmd"
 )
 
-// Main application entrypoint
-
 func main() {
 	if len(os.Args) < 2 {
 		cmd.PrintUsage()

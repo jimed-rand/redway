@@ -16,7 +16,7 @@ type MindTheGappsAddon struct {
 
 func NewMindTheGappsAddon() *MindTheGappsAddon {
 	versions := []string{"12.0.0", "12.0.0_64only", "13.0.0", "13.0.0_64only", "14.0.0", "15.0.0", "16.0.0"}
-	
+
 	dlLinks := map[string]map[string][]string{
 		"16.0.0": {
 			"x86_64": {"https://github.com/s1204IT/MindTheGappsBuilder/releases/download/20250330/MindTheGapps-15.0.0-x86_64-20250330.zip", "e54694828bd74e9066b2534a9675c31e"},
@@ -92,7 +92,7 @@ func (m *MindTheGappsAddon) Download(version, arch string) error {
 
 func (m *MindTheGappsAddon) Extract(version, arch string) error {
 	filename := filepath.Join(m.downloadDir, "mindthegapps.zip")
-	
+
 	if err := ensureDir(m.extractTo); err != nil {
 		return err
 	}
@@ -141,7 +141,7 @@ func (m *MindTheGappsAddon) Extract(version, arch string) error {
 
 func (m *MindTheGappsAddon) Copy(version, arch, outputDir string) error {
 	copyDir := filepath.Join(outputDir, "mindthegapps")
-	
+
 	if err := os.RemoveAll(copyDir); err != nil {
 		return err
 	}
@@ -161,4 +161,10 @@ func (m *MindTheGappsAddon) Install(version, arch, outputDir string) error {
 		return err
 	}
 	return m.Copy(version, arch, outputDir)
+}
+
+func (m *MindTheGappsAddon) GetBootArgs(version, arch string) []string {
+	return []string{
+		"ro.setupwizard.mode=DISABLED",
+	}
 }

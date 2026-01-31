@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"reddock/pkg/addons"
 	"reddock/pkg/config"
 )
 
@@ -87,6 +88,24 @@ func (m *Manager) Start(verbose bool) error {
 			"-p", fmt.Sprintf("%d:5555", container.Port),
 			container.ImageURL,
 			"androidboot.redroid_gpu_mode=" + gpuParam,
+		}
+
+		// Add boot arguments for addons
+		version := config.ExtractVersionFromImage(container.ImageURL)
+		arch := addons.GetHostArch()
+		injector := addons.NewAddonInjector()
+
+		bootArgsMap := make(map[string]bool)
+		for _, addonName := range container.Addons {
+			if addon, err := injector.GetAddon(addonName); err == nil {
+				addonArgs := addon.GetBootArgs(version, arch)
+				for _, arg := range addonArgs {
+					if !bootArgsMap[arg] {
+						args = append(args, arg)
+						bootArgsMap[arg] = true
+					}
+				}
+			}
 		}
 
 		runCmd := m.runtime.Command(args...)

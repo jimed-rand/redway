@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const (
@@ -34,13 +35,14 @@ var AvailableImages = []RedroidImage{
 }
 
 type Container struct {
-	Name        string `json:"name"`
-	ImageURL    string `json:"image_url"`
-	DataPath    string `json:"data_path"`
-	LogFile     string `json:"log_file"`
-	Port        int    `json:"port"`
-	GPUMode     string `json:"gpu_mode"`
-	Initialized bool   `json:"initialized"`
+	Name        string   `json:"name"`
+	ImageURL    string   `json:"image_url"`
+	DataPath    string   `json:"data_path"`
+	LogFile     string   `json:"log_file"`
+	Port        int      `json:"port"`
+	GPUMode     string   `json:"gpu_mode"`
+	Initialized bool     `json:"initialized"`
+	Addons      []string `json:"addons"`
 }
 
 type Config struct {
@@ -142,4 +144,39 @@ func (cfg *Config) ListContainers() []*Container {
 		containers = append(containers, container)
 	}
 	return containers
+}
+
+func ExtractVersionFromImage(imageURL string) string {
+	parts := strings.Split(imageURL, ":")
+	if len(parts) < 2 {
+		return ""
+	}
+
+	versionPart := parts[1]
+
+	versionPart = strings.TrimSuffix(versionPart, "-latest")
+	versionPart = strings.TrimSuffix(versionPart, "-gapps")
+	versionPart = strings.TrimSuffix(versionPart, "-ndk")
+	versionPart = strings.TrimSuffix(versionPart, "-houdini")
+	versionPart = strings.TrimSuffix(versionPart, "-magisk")
+	versionPart = strings.TrimSuffix(versionPart, "-widevine")
+
+	if strings.Contains(versionPart, "_") {
+		return versionPart
+	}
+
+	knownVersions := []string{
+		"16.0.0", "15.0.0", "14.0.0", "13.0.0", "12.0.0",
+		"11.0.0", "10.0.0", "9.0.0", "8.1.0",
+		"16.0.0_64only", "15.0.0_64only", "14.0.0_64only",
+		"13.0.0_64only", "12.0.0_64only",
+	}
+
+	for _, v := range knownVersions {
+		if strings.HasPrefix(versionPart, v) {
+			return v
+		}
+	}
+
+	return versionPart
 }
