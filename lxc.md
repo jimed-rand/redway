@@ -117,4 +117,3 @@ sudo sed -i 's/redroid_gpu_mode=guest/redroid_gpu_mode=host/' /var/lib/lxc/redro
 > [!TIP]
 > **ADB Connection Refused?**
 > Android takes time to boot. Wait at least 60 seconds before connecting.
-

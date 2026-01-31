@@ -208,6 +208,6 @@ func PrintUsage() {
 	fmt.Println("  log <name>                     Show container logs (name required)")
 	fmt.Println("\nExamples:")
 	fmt.Println("  sudo redway prepare-lxc")
-	fmt.Println("  sudo redway init android16")
-	fmt.Println("  sudo redway start android16")
+	fmt.Println("  sudo redway init android13")
+	fmt.Println("  sudo redway start android13")
 }
