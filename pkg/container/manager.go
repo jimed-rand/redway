@@ -3,8 +3,6 @@ package container
 import (
 	"fmt"
 	"os"
-
-	"reddock/pkg/addons"
 	"reddock/pkg/config"
 )
 
@@ -90,24 +88,6 @@ func (m *Manager) Start(verbose bool) error {
 			"androidboot.redroid_gpu_mode=" + gpuParam,
 		}
 
-		// Add boot arguments for addons
-		version := config.ExtractVersionFromImage(container.ImageURL)
-		arch := addons.GetHostArch()
-		injector := addons.NewAddonInjector()
-
-		bootArgsMap := make(map[string]bool)
-		for _, addonName := range container.Addons {
-			if addon, err := injector.GetAddon(addonName); err == nil {
-				addonArgs := addon.GetBootArgs(version, arch)
-				for _, arg := range addonArgs {
-					if !bootArgsMap[arg] {
-						args = append(args, arg)
-						bootArgsMap[arg] = true
-					}
-				}
-			}
-		}
-
 		runCmd := m.runtime.Command(args...)
 		if verbose {
 			runCmd.Stdout = os.Stdout
@@ -120,15 +100,6 @@ func (m *Manager) Start(verbose bool) error {
 
 	fmt.Println("The Container started successfully")
 
-	// Apply permissions for addons if container is running
-	if m.IsRunning() {
-		injector := addons.NewAddonInjector()
-		for _, addonName := range container.Addons {
-			if err := injector.SetPermissions(container.Name, addonName); err != nil {
-				fmt.Printf("Warning: Failed to set permissions for addon %s: %v\n", addonName, err)
-			}
-		}
-	}
 	if verbose {
 		fmt.Println("Showing logs (Press Ctrl+C to stop)...")
 		logCmd := m.runtime.Command("logs", "-f", container.Name)

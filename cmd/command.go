@@ -46,8 +46,6 @@ func (c *Command) Execute() error {
 		return c.executeList()
 	case "log":
 		return c.executeLog()
-	case "addons":
-		return c.executeAddons()
 	case "prune":
 		return c.executePrune()
 	default:
@@ -239,7 +237,6 @@ func PrintUsage() {
 	fmt.Println("  remove <name> [--all]          Remove container, data, and optionally image (--all)")
 	fmt.Println("  list                           List all Reddock containers")
 	fmt.Println("  log <name>                     Show container logs (name required)")
-	fmt.Println("  addons                         Manage addons (Houdini, NDK, Gapps)")
 	fmt.Println("  prune                          Remove unused images")
 	fmt.Println("\nExamples:")
 	fmt.Println("  sudo reddock init android13")

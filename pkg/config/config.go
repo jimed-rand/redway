@@ -35,14 +35,13 @@ var AvailableImages = []RedroidImage{
 }
 
 type Container struct {
-	Name        string   `json:"name"`
-	ImageURL    string   `json:"image_url"`
-	DataPath    string   `json:"data_path"`
-	LogFile     string   `json:"log_file"`
-	Port        int      `json:"port"`
-	GPUMode     string   `json:"gpu_mode"`
-	Initialized bool     `json:"initialized"`
-	Addons      []string `json:"addons"`
+	Name        string `json:"name"`
+	ImageURL    string `json:"image_url"`
+	DataPath    string `json:"data_path"`
+	LogFile     string `json:"log_file"`
+	Port        int    `json:"port"`
+	GPUMode     string `json:"gpu_mode"`
+	Initialized bool   `json:"initialized"`
 }
 
 type Config struct {
@@ -155,11 +154,6 @@ func ExtractVersionFromImage(imageURL string) string {
 	versionPart := parts[1]
 
 	versionPart = strings.TrimSuffix(versionPart, "-latest")
-	versionPart = strings.TrimSuffix(versionPart, "-gapps")
-	versionPart = strings.TrimSuffix(versionPart, "-ndk")
-	versionPart = strings.TrimSuffix(versionPart, "-houdini")
-	versionPart = strings.TrimSuffix(versionPart, "-magisk")
-	versionPart = strings.TrimSuffix(versionPart, "-widevine")
 
 	if strings.Contains(versionPart, "_") {
 		return versionPart
