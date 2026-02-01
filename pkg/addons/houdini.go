@@ -16,7 +16,7 @@ type HoudiniAddon struct {
 }
 
 func NewHoudiniAddon() *HoudiniAddon {
-	versions := []string{"8.1.0", "9.0.0", "10.0.0", "11.0.0", "12.0.0", "13.0.0", "14.0.0", "15.0.0", "16.0.0"}
+	versions := []string{"8.1.0", "9.0.0", "10.0.0", "11.0.0", "12.0.0", "13.0.0"}
 
 	dlLinks := map[string]map[string][]string{
 		"8.1.0": {
@@ -40,18 +40,6 @@ func NewHoudiniAddon() *HoudiniAddon {
 			"md5": {"cb7ffac26d47ec7c89df43818e126b47"},
 		},
 		"13.0.0": {
-			"url": {"https://github.com/rote66/vendor_intel_proprietary_houdini/archive/debc3dc91cf12b5c5b8a1c546a5b0b7bf7f838a8.zip"},
-			"md5": {"cb7ffac26d47ec7c89df43818e126b47"},
-		},
-		"14.0.0": {
-			"url": {"https://github.com/rote66/vendor_intel_proprietary_houdini/archive/debc3dc91cf12b5c5b8a1c546a5b0b7bf7f838a8.zip"},
-			"md5": {"cb7ffac26d47ec7c89df43818e126b47"},
-		},
-		"15.0.0": {
-			"url": {"https://github.com/rote66/vendor_intel_proprietary_houdini/archive/debc3dc91cf12b5c5b8a1c546a5b0b7bf7f838a8.zip"},
-			"md5": {"cb7ffac26d47ec7c89df43818e126b47"},
-		},
-		"16.0.0": {
 			"url": {"https://github.com/rote66/vendor_intel_proprietary_houdini/archive/debc3dc91cf12b5c5b8a1c546a5b0b7bf7f838a8.zip"},
 			"md5": {"cb7ffac26d47ec7c89df43818e126b47"},
 		},

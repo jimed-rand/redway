@@ -17,35 +17,9 @@ type LiteGappsAddon struct {
 }
 
 func NewLiteGappsAddon() *LiteGappsAddon {
-	versions := []string{"8.1.0", "9.0.0", "10.0.0", "11.0.0", "12.0.0", "12.0.0_64only", "13.0.0", "13.0.0_64only", "14.0.0", "14.0.0_64only", "15.0.0", "15.0.0_64only", "16.0.0"}
+	versions := []string{"8.1.0", "9.0.0", "10.0.0", "11.0.0", "12.0.0", "12.0.0_64only", "13.0.0", "13.0.0_64only"}
 
 	dlLinks := map[string]map[string][]string{
-		"16.0.0": {
-			"x86_64": {"https://sourceforge.net/projects/litegapps/files/litegapps/x86_64/35/lite/2024-10-27/LiteGapps-x86_64-15.0-20241027-official.zip", "ff6d94d6a0344320644b66fa9f662eda"},
-			"x86":    {"https://sourceforge.net/projects/litegapps/files/litegapps/x86/35/lite/2024-10-27/LiteGapps-x86-15.0-20241027-official.zip", "9fcc749616bf362d5152c94ec73c2534"},
-			"arm64":  {"https://sourceforge.net/projects/litegapps/files/litegapps/arm64/35/lite/2024-10-23/LiteGapps-arm64-15.0-20241023-official.zip", "fdf6ab112e1cb1125b5b926669e40e6d"},
-			"arm":    {"https://sourceforge.net/projects/litegapps/files/litegapps/arm/35/lite/2024-10-26/LiteGapps-arm-15.0-20241026-official.zip", "4b08efae685ddd4846acfffc40dd0062"},
-		},
-		"15.0.0": {
-			"x86_64": {"https://sourceforge.net/projects/litegapps/files/litegapps/x86_64/35/lite/2024-10-27/LiteGapps-x86_64-15.0-20241027-official.zip", "ff6d94d6a0344320644b66fa9f662eda"},
-			"x86":    {"https://sourceforge.net/projects/litegapps/files/litegapps/x86/35/lite/2024-10-27/LiteGapps-x86-15.0-20241027-official.zip", "9fcc749616bf362d5152c94ec73c2534"},
-			"arm64":  {"https://sourceforge.net/projects/litegapps/files/litegapps/arm64/35/lite/2024-10-23/LiteGapps-arm64-15.0-20241023-official.zip", "fdf6ab112e1cb1125b5b926669e40e6d"},
-			"arm":    {"https://sourceforge.net/projects/litegapps/files/litegapps/arm/35/lite/2024-10-26/LiteGapps-arm-15.0-20241026-official.zip", "4b08efae685ddd4846acfffc40dd0062"},
-		},
-		"15.0.0_64only": {
-			"x86_64": {"https://sourceforge.net/projects/litegapps/files/litegapps/x86_64/35/lite/2024-10-27/LiteGapps-x86_64-15.0-20241027-official.zip", "ff6d94d6a0344320644b66fa9f662eda"},
-			"arm64":  {"https://sourceforge.net/projects/litegapps/files/litegapps/arm64/35/lite/2024-10-23/LiteGapps-arm64-15.0-20241023-official.zip", "fdf6ab112e1cb1125b5b926669e40e6d"},
-		},
-		"14.0.0": {
-			"x86_64": {"https://sourceforge.net/projects/litegapps/files/litegapps/x86_64/34/lite/v3.0/AUTO_LiteGapps_x86_64_14.0_v3.0_official.zip", "51cbdb561f9c9162e4fdcbffe691c4bc"},
-			"x86":    {"https://sourceforge.net/projects/litegapps/files/litegapps/x86/35/lite/2024-10-27/LiteGapps-x86-15.0-20241027-official.zip", "9fcc749616bf362d5152c94ec73c2534"},
-			"arm64":  {"https://sourceforge.net/projects/litegapps/files/litegapps/arm64/34/lite/2024-10-22/LiteGapps-arm64-14.0-20241022-official.zip", "30be139a5f9c52b78e3f852877ad2f0b"},
-			"arm":    {"https://sourceforge.net/projects/litegapps/files/litegapps/arm/34/lite/2024-10-28/LiteGapps-arm-14.0-20241028-official.zip", "94669d92feec6724bc521ece19754fb0"},
-		},
-		"14.0.0_64only": {
-			"x86_64": {"https://sourceforge.net/projects/litegapps/files/litegapps/x86_64/34/lite/v3.0/AUTO_LiteGapps_x86_64_14.0_v3.0_official.zip", "51cbdb561f9c9162e4fdcbffe691c4bc"},
-			"arm64":  {"https://sourceforge.net/projects/litegapps/files/litegapps/arm64/34/lite/2024-10-22/LiteGapps-arm64-14.0-20241022-official.zip", "30be139a5f9c52b78e3f852877ad2f0b"},
-		},
 		"13.0.0": {
 			"x86_64": {"https://master.dl.sourceforge.net/project/litegapps/litegapps/x86_64/33/lite/2024-02-22/AUTO-LiteGapps-x86_64-13.0-20240222-official.zip", "d91a18a28cc2718c18726a59aedcb8da"},
 			"arm64":  {"https://sourceforge.net/projects/litegapps/files/litegapps/arm64/33/lite/2024-10-22/LiteGapps-arm64-13.0-20241022-official.zip", "a8b1181291fe70d1e838a8579218a47c"},
@@ -89,9 +63,6 @@ func NewLiteGappsAddon() *LiteGappsAddon {
 	}
 
 	apiLevelMap := map[string]string{
-		"16.0.0": "35",
-		"15.0.0": "35",
-		"14.0.0": "34",
 		"13.0.0": "33",
 		"12.0.0": "31",
 		"11.0.0": "30",

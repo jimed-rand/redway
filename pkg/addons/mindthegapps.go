@@ -13,25 +13,9 @@ type MindTheGappsAddon struct {
 }
 
 func NewMindTheGappsAddon() *MindTheGappsAddon {
-	versions := []string{"12.0.0", "12.0.0_64only", "13.0.0", "13.0.0_64only", "14.0.0", "15.0.0", "16.0.0"}
+	versions := []string{"12.0.0", "12.0.0_64only", "13.0.0", "13.0.0_64only"}
 
 	dlLinks := map[string]map[string][]string{
-		"16.0.0": {
-			"x86_64": {"https://github.com/s1204IT/MindTheGappsBuilder/releases/download/20250330/MindTheGapps-15.0.0-x86_64-20250330.zip", "e54694828bd74e9066b2534a9675c31e"},
-			"arm64":  {"https://github.com/s1204IT/MindTheGappsBuilder/releases/download/20250330/MindTheGapps-15.0.0-arm64-20250330.zip", "79acb62f0f7c66b0f0bcadae5624f3d1"},
-			"arm":    {"https://github.com/s1204IT/MindTheGappsBuilder/releases/download/20250330/MindTheGapps-15.0.0-arm-20250330.zip", "4ced6a404a714e61831e16068c3642b3"},
-		},
-		"15.0.0": {
-			"x86_64": {"https://github.com/s1204IT/MindTheGappsBuilder/releases/download/20250330/MindTheGapps-15.0.0-x86_64-20250330.zip", "e54694828bd74e9066b2534a9675c31e"},
-			"arm64":  {"https://github.com/s1204IT/MindTheGappsBuilder/releases/download/20250330/MindTheGapps-15.0.0-arm64-20250330.zip", "79acb62f0f7c66b0f0bcadae5624f3d1"},
-			"arm":    {"https://github.com/s1204IT/MindTheGappsBuilder/releases/download/20250330/MindTheGapps-15.0.0-arm-20250330.zip", "4ced6a404a714e61831e16068c3642b3"},
-		},
-		"14.0.0": {
-			"x86_64": {"https://github.com/s1204IT/MindTheGappsBuilder/releases/download/20240226/MindTheGapps-14.0.0-x86_64-20240226.zip", "a827a84ccb0cf5914756e8561257ed13"},
-			"x86":    {"https://github.com/s1204IT/MindTheGappsBuilder/releases/download/20240226/MindTheGapps-14.0.0-x86-20240226.zip", "45736b21475464e4a45196b9aa9d3b7f"},
-			"arm64":  {"https://github.com/s1204IT/MindTheGappsBuilder/releases/download/20240226/MindTheGapps-14.0.0-arm64-20240226.zip", "a0905cc7bf3f4f4f2e3f59a4e1fc789b"},
-			"arm":    {"https://github.com/s1204IT/MindTheGappsBuilder/releases/download/20240226/MindTheGapps-14.0.0-arm-20240226.zip", "fa167a3b7a10c4d3e688a59cd794f75b"},
-		},
 		"13.0.0": {
 			"x86_64": {"https://github.com/s1204IT/MindTheGappsBuilder/releases/download/20240226/MindTheGapps-13.0.0-x86_64-20240226.zip", "eee87a540b6e778f3a114fff29e133aa"},
 			"x86":    {"https://github.com/s1204IT/MindTheGappsBuilder/releases/download/20240226/MindTheGapps-13.0.0-x86-20240226.zip", "d928c5eabb4394a97f2d7a5c663e7c2e"},
