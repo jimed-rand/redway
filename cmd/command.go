@@ -163,24 +163,24 @@ func (c *Command) executeInit() error {
 				}
 
 				customImageName := fmt.Sprintf("reddock-custom:%s-%s", containerName, version)
-				
+
 				fmt.Print("\nDo you want to publish this image to Docker Hub? [y/N]: ")
 				var publishImage string
 				fmt.Scanln(&publishImage)
-				
+
 				pushToRegistry := false
 				if strings.ToLower(publishImage) == "y" || strings.ToLower(publishImage) == "yes" {
 					fmt.Print("Enter Docker Hub image name (format: username/repository:tag): ")
 					reader := bufio.NewReader(os.Stdin)
 					dockerHubName, _ := reader.ReadString('\n')
 					dockerHubName = strings.TrimSpace(dockerHubName)
-					
+
 					if dockerHubName != "" {
 						customImageName = dockerHubName
 						pushToRegistry = true
 					}
 				}
-				
+
 				fmt.Printf("\nBuilding custom image '%s' with addons: %v\n", customImageName, selectedAddons)
 
 				if err := am.BuildCustomImage(image, customImageName, version, arch, selectedAddons, pushToRegistry); err != nil {
@@ -331,16 +331,91 @@ func (c *Command) executePrune() error {
 }
 
 func (c *Command) executeDockerfile() error {
-	var containerName string
-
-	if len(c.Args) > 0 {
-		containerName = c.Args[0]
-	} else {
-		return fmt.Errorf("Container name is required! Usage: reddock dockerfile <container-name>")
+	if len(c.Args) < 1 {
+		return fmt.Errorf("Usage: reddock dockerfile <subcommand> <container-name> [options]\n\n" +
+			"Subcommands:\n" +
+			"  show <container>              Show generated Dockerfile\n" +
+			"  edit <container>              Edit Dockerfile with nano\n" +
+			"  build <container> [image]     Build Docker image from Dockerfile\n" +
+			"  commit <container> <image>    Commit running container to new image\n" +
+			"  install <container> <addon>   Install addon to running container\n" +
+			"  interactive <container>       Interactive Dockerfile workflow")
 	}
 
-	generator := container.NewDockerfileGenerator(containerName)
-	return generator.Show()
+	subcommand := c.Args[0]
+
+	switch subcommand {
+	case "show":
+		if len(c.Args) < 2 {
+			return fmt.Errorf("Container name is required! Usage: reddock dockerfile show <container-name>")
+		}
+		generator := container.NewDockerfileGenerator(c.Args[1])
+		return generator.Show()
+
+	case "edit":
+		if len(c.Args) < 2 {
+			return fmt.Errorf("Container name is required! Usage: reddock dockerfile edit <container-name>")
+		}
+		generator := container.NewDockerfileGenerator(c.Args[1])
+		return generator.Edit()
+
+	case "build":
+		if len(c.Args) < 2 {
+			return fmt.Errorf("Container name is required! Usage: reddock dockerfile build <container-name> [image-name]")
+		}
+		containerName := c.Args[1]
+		imageName := fmt.Sprintf("reddock/%s:custom", containerName)
+		if len(c.Args) > 2 {
+			imageName = c.Args[2]
+		}
+		generator := container.NewDockerfileGenerator(containerName)
+		// Save Dockerfile first
+		if err := generator.SaveToFile(generator.GetDockerfilePath()); err != nil {
+			return err
+		}
+		return generator.Build(imageName)
+
+	case "commit":
+		if len(c.Args) < 3 {
+			return fmt.Errorf("Usage: reddock dockerfile commit <container-name> <new-image-name> [message]")
+		}
+		containerName := c.Args[1]
+		imageName := c.Args[2]
+		message := ""
+		if len(c.Args) > 3 {
+			message = strings.Join(c.Args[3:], " ")
+		}
+		generator := container.NewDockerfileGenerator(containerName)
+		return generator.CommitContainer(imageName, message)
+
+	case "install":
+		if len(c.Args) < 3 {
+			return fmt.Errorf("Usage: reddock dockerfile install <container-name> <addon-name>\n\n" +
+				"This installs prepared addon files to a RUNNING container.\n" +
+				"First prepare the addon with: reddock addons prepare <addon> <version>")
+		}
+		containerName := c.Args[1]
+		addonName := c.Args[2]
+		generator := container.NewDockerfileGenerator(containerName)
+		// Check if container is running
+		mgr := container.NewManagerForContainer(containerName)
+		if !mgr.IsRunning() {
+			return fmt.Errorf("Container '%s' is not running. Start it first with: sudo reddock start %s", containerName, containerName)
+		}
+		return generator.InstallAddonToRunningContainer("/tmp/reddock-addons", addonName)
+
+	case "interactive", "i":
+		if len(c.Args) < 2 {
+			return fmt.Errorf("Container name is required! Usage: reddock dockerfile interactive <container-name>")
+		}
+		generator := container.NewDockerfileGenerator(c.Args[1])
+		return generator.Interactive()
+
+	default:
+		// Backward compatibility: treat first arg as container name for "show"
+		generator := container.NewDockerfileGenerator(subcommand)
+		return generator.Show()
+	}
 }
 
 func PrintUsage() {
@@ -358,13 +433,26 @@ func PrintUsage() {
 	fmt.Println("  list                           	List all Reddock containers")
 	fmt.Println("  log <n>                     		Show container logs (name required)")
 	fmt.Println("  prune                          	Remove unused images")
-	fmt.Println("  dockerfile <n>              		Show the Dockerfile for a container")
+	fmt.Println("  dockerfile <cmd> <n> ...       	Dockerfile management (see below)")
 	fmt.Println("  addons [command]               	Manage addons")
 	fmt.Println("  version                        	Show version information")
+	fmt.Println("\nDockerfile Subcommands:")
+	fmt.Println("  dockerfile show <n>              	Show generated Dockerfile")
+	fmt.Println("  dockerfile edit <n>              	Edit Dockerfile with nano")
+	fmt.Println("  dockerfile build <n> [image]     	Build Docker image from Dockerfile")
+	fmt.Println("  dockerfile commit <n> <image>    	Commit running container to new image")
+	fmt.Println("  dockerfile install <n> <addon>   	Install addon to running container")
+	fmt.Println("  dockerfile interactive <n>       	Interactive Dockerfile workflow")
 	fmt.Println("\nExamples:")
 	fmt.Println("  sudo reddock init android13")
 	fmt.Println("  sudo reddock start android13 -v")
 	fmt.Println("  sudo reddock remove android13")
 	fmt.Println("  sudo reddock remove android13 --image  # Also remove Docker image")
 	fmt.Println("  sudo reddock addons build custom-android13 13.0.0 litegapps ndk")
+	fmt.Println("")
+	fmt.Println("  # Dockerfile workflow (redroid-script approach)")
+	fmt.Println("  sudo reddock dockerfile edit android13           # Edit with nano")
+	fmt.Println("  sudo reddock dockerfile build android13 myimage  # Build image")
+	fmt.Println("  sudo reddock dockerfile install android13 houdini # Install to running container")
+	fmt.Println("  sudo reddock dockerfile commit android13 myimage  # Save container state")
 }

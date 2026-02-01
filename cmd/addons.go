@@ -21,6 +21,8 @@ func (c *Command) executeAddons() error {
 		return c.executeAddonsList()
 	case "build":
 		return c.executeAddonsBuild(subArgs)
+	case "prepare":
+		return c.executeAddonsPrepare(subArgs)
 	default:
 		return fmt.Errorf("unknown addons subcommand: %s", subCommand)
 	}
@@ -31,6 +33,7 @@ func (c *Command) showAddonsHelp() error {
 	fmt.Println("\nUsage: reddock addons [command] [options]")
 	fmt.Println("\nCommands:")
 	fmt.Println("  list                                         	List available addons")
+	fmt.Println("  prepare <addon> <version>                    	Prepare addon files (for runtime install)")
 	fmt.Println("  build <n> <version> <addons...> [--push]  		Build custom image with addons")
 	fmt.Println("\nAvailable Addons:")
 	fmt.Println("  houdini       		- Intel Houdini ARM translation (x86/x86_64 only)")
@@ -42,9 +45,14 @@ func (c *Command) showAddonsHelp() error {
 	fmt.Println("  --push        		Push the built image to Docker Hub (requires authentication)")
 	fmt.Println("\nExamples:")
 	fmt.Println("  reddock addons list")
+	fmt.Println("  reddock addons prepare houdini 13.0.0")
 	fmt.Println("  reddock addons build android13-gapps 13.0.0 litegapps ndk")
 	fmt.Println("  reddock addons build username/android13:v1 13.0.0 litegapps --push")
-	fmt.Println("  reddock addons build android11-full 11.0.0 opengapps houdini")
+	fmt.Println("\nRuntime Installation (redroid-script approach):")
+	fmt.Println("  1. Prepare the addon:    reddock addons prepare houdini 13.0.0")
+	fmt.Println("  2. Start the container:  sudo reddock start android13")
+	fmt.Println("  3. Install to running:   sudo reddock dockerfile install android13 houdini")
+	fmt.Println("  4. Save changes:         sudo reddock dockerfile commit android13 myimage:latest")
 	return nil
 }
 
@@ -73,7 +81,7 @@ func (c *Command) executeAddonsBuild(args []string) error {
 
 	pushToRegistry := false
 	var cleanArgs []string
-	
+
 	for _, arg := range args {
 		if arg == "--push" {
 			pushToRegistry = true
@@ -102,6 +110,51 @@ func (c *Command) executeAddonsBuild(args []string) error {
 
 	baseImage := fmt.Sprintf("redroid/redroid:%s-latest", version)
 	return manager.BuildCustomImage(baseImage, imageName, version, arch, addonNames, pushToRegistry)
+}
+
+// executeAddonsPrepare prepares addon files without building an image
+// This is useful for installing addons to a running container
+func (c *Command) executeAddonsPrepare(args []string) error {
+	if len(args) < 2 {
+		return fmt.Errorf("Usage: reddock addons prepare <addon-name> <android-version>\n\n" +
+			"This prepares addon files without building an image.\n" +
+			"After preparation, use 'reddock dockerfile install <container> <addon>' to install to a running container.\n\n" +
+			"Example:\n" +
+			"  reddock addons prepare houdini 13.0.0\n" +
+			"  reddock dockerfile install android13 houdini")
+	}
+
+	addonName := args[0]
+	version := args[1]
+	arch := getHostArch()
+
+	manager := addons.NewAddonManager()
+
+	addon, err := manager.GetAddon(addonName)
+	if err != nil {
+		return fmt.Errorf("Invalid addon: %s", addonName)
+	}
+
+	if !addon.IsSupported(version) {
+		return fmt.Errorf("%s does not support Android %s.\nSupported versions: %v",
+			addon.Name(), version, addon.SupportedVersions())
+	}
+
+	fmt.Printf("\n=== Preparing %s addon for Android %s ===\n", addon.Name(), version)
+	fmt.Printf("Architecture: %s\n\n", arch)
+
+	if err := manager.PrepareAddon(addonName, version, arch); err != nil {
+		return err
+	}
+
+	fmt.Println("\n✅ Addon prepared successfully!")
+	fmt.Println("\nNext steps:")
+	fmt.Println("  To install to a running container:")
+	fmt.Printf("    sudo reddock dockerfile install <container-name> %s\n", addonName)
+	fmt.Println("\n  To build a Docker image with this addon:")
+	fmt.Printf("    sudo reddock addons build myimage:latest %s %s\n", version, addonName)
+
+	return nil
 }
 
 func getHostArch() string {
