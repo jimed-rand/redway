@@ -113,7 +113,7 @@ func (am *AddonManager) BuildCustomImage(baseImage, targetImage, version, arch s
 	if err := pullImage(runtime, baseImage); err != nil {
 		return fmt.Errorf("Failed to pull base image: %v", err)
 	}
-	fmt.Println("Base image pulled successfully\n")
+	fmt.Println("Base image pulled successfully")
 
 	for _, addonName := range addonNames {
 		if err := am.PrepareAddon(addonName, version, arch); err != nil {
@@ -183,7 +183,7 @@ func (am *AddonManager) PushToRegistry(runtime, imageName string) error {
 		if err := loginCmd.Run(); err != nil {
 			return fmt.Errorf("login failed: %v", err)
 		}
-		fmt.Println("Login successful!\n")
+		fmt.Println("Login successful!")
 	}
 
 	spinner := ui.NewSpinner(fmt.Sprintf("Pushing %s to Docker Hub...", imageName))
