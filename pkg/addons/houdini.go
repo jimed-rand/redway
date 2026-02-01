@@ -66,10 +66,6 @@ func NewHoudiniAddon() *HoudiniAddon {
 }
 
 func (h *HoudiniAddon) Download(version, arch string, onStatus func(string)) error {
-	if !h.IsSupported(version) {
-		return fmt.Errorf("houdini not supported for Android %s", version)
-	}
-
 	if arch != "x86" && arch != "x86_64" {
 		return fmt.Errorf("houdini only supports x86/x86_64 architecture")
 	}

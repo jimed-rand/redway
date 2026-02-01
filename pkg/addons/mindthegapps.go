@@ -63,9 +63,6 @@ func NewMindTheGappsAddon() *MindTheGappsAddon {
 }
 
 func (m *MindTheGappsAddon) Download(version, arch string, onStatus func(string)) error {
-	if !m.IsSupported(version) {
-		return fmt.Errorf("MindTheGapps not supported for Android %s", version)
-	}
 
 	versionLinks, ok := m.dlLinks[version]
 	if !ok {

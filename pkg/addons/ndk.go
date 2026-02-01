@@ -26,10 +26,6 @@ func NewNDKAddon() *NDKAddon {
 }
 
 func (n *NDKAddon) Download(version, arch string, onStatus func(string)) error {
-	if !n.IsSupported(version) {
-		return fmt.Errorf("NDK not supported for Android %s", version)
-	}
-
 	if arch != "x86" && arch != "x86_64" {
 		return fmt.Errorf("NDK only supports x86/x86_64 architecture")
 	}

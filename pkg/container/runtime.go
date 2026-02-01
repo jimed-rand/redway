@@ -11,6 +11,7 @@ type Runtime interface {
 	Command(args ...string) *exec.Cmd
 	IsInstalled() bool
 	PullImage(image string) error
+	PushImage(image string) error
 	Run(args ...string) error
 	Stop(containerName string) error
 	Remove(containerName string, force bool) error
@@ -19,6 +20,7 @@ type Runtime interface {
 	Exists(containerName string) bool
 	IsRunning(containerName string) bool
 	PruneImages() (string, error)
+	IsAuthenticated() (bool, string, error)
 }
 
 type GenericRuntime struct {
@@ -48,6 +50,13 @@ func (r *GenericRuntime) IsInstalled() bool {
 
 func (r *GenericRuntime) PullImage(image string) error {
 	cmd := r.Command("pull", image)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func (r *GenericRuntime) PushImage(image string) error {
+	cmd := r.Command("push", image)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
@@ -107,4 +116,23 @@ func (r *GenericRuntime) PruneImages() (string, error) {
 		return "", err
 	}
 	return string(output), nil
+}
+
+func (r *GenericRuntime) IsAuthenticated() (bool, string, error) {
+	cmd := r.Command("info")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return false, "", err
+	}
+	outStr := string(output)
+	lines := strings.Split(outStr, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "Username:") {
+			parts := strings.Split(line, ":")
+			if len(parts) > 1 {
+				return true, strings.TrimSpace(parts[1]), nil
+			}
+		}
+	}
+	return false, "", nil
 }

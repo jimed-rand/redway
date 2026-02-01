@@ -3,8 +3,8 @@ package addons
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"reddock/pkg/container"
 	"reddock/pkg/ui"
 	"strings"
 )
@@ -12,6 +12,7 @@ import (
 type AddonManager struct {
 	availableAddons map[string]Addon
 	workDir         string
+	runtime         container.Runtime
 }
 
 func NewAddonManager() *AddonManager {
@@ -26,6 +27,7 @@ func NewAddonManager() *AddonManager {
 	return &AddonManager{
 		availableAddons: addons,
 		workDir:         "/tmp/reddock-addons",
+		runtime:         container.NewRuntime(),
 	}
 }
 
@@ -45,14 +47,34 @@ func (am *AddonManager) ListAddons() []string {
 	return names
 }
 
+func (am *AddonManager) GetAddonsByType(t AddonType, version string) []Addon {
+	var addons []Addon
+	for _, addon := range am.availableAddons {
+		if addon.Type() == t {
+			if version == "" || addon.IsSupported(version) {
+				addons = append(addons, addon)
+			}
+		}
+	}
+	return addons
+}
+
+func (am *AddonManager) GetAddonNamesByType(t AddonType, version string) []string {
+	var names []string
+	for name, addon := range am.availableAddons {
+		if addon.Type() == t {
+			if version == "" || addon.IsSupported(version) {
+				names = append(names, name)
+			}
+		}
+	}
+	return names
+}
+
 func (am *AddonManager) PrepareAddon(addonName, version, arch string) error {
 	addon, err := am.GetAddon(addonName)
 	if err != nil {
 		return err
-	}
-
-	if !addon.IsSupported(version) {
-		return fmt.Errorf("%s does not support Android %s", addon.Name(), version)
 	}
 
 	if err := ensureDir(am.workDir); err != nil {
@@ -97,7 +119,7 @@ func (am *AddonManager) BuildDockerfile(baseImage string, addons []string) (stri
 	return dockerfile.String(), nil
 }
 
-func (am *AddonManager) BuildCustomImage(baseImage, targetImage, version, arch string, addonNames []string, pushToRegistry bool) error {
+func (am *AddonManager) BuildCustomImage(baseImage, targetImage, version, arch string, addonNames []string) error {
 	if err := ensureDir(am.workDir); err != nil {
 		return err
 	}
@@ -107,10 +129,8 @@ func (am *AddonManager) BuildCustomImage(baseImage, targetImage, version, arch s
 	fmt.Printf("Target Image: %s\n", targetImage)
 	fmt.Printf("Addons: %v\n\n", addonNames)
 
-	runtime := getContainerRuntime()
-
 	fmt.Printf("Pulling base image %s...\n", baseImage)
-	if err := pullImage(runtime, baseImage); err != nil {
+	if err := am.runtime.PullImage(baseImage); err != nil {
 		return fmt.Errorf("Failed to pull base image: %v", err)
 	}
 	fmt.Println("Base image pulled successfully")
@@ -138,7 +158,7 @@ func (am *AddonManager) BuildCustomImage(baseImage, targetImage, version, arch s
 	spinner := ui.NewSpinner("Building Docker image...")
 	spinner.Start()
 
-	cmd := exec.Command(runtime, "build", "-t", targetImage, am.workDir)
+	cmd := am.runtime.Command("build", "-t", targetImage, am.workDir)
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
@@ -147,59 +167,6 @@ func (am *AddonManager) BuildCustomImage(baseImage, targetImage, version, arch s
 		return fmt.Errorf("Failed to build Docker image: %v", err)
 	}
 	spinner.Finish(fmt.Sprintf("Successfully built %s", targetImage))
-
-	if pushToRegistry {
-		if err := am.PushToRegistry(runtime, targetImage); err != nil {
-			return fmt.Errorf("Failed to push to registry: %v", err)
-		}
-	}
-
-	return nil
-}
-
-func (am *AddonManager) PushToRegistry(runtime, imageName string) error {
-	fmt.Println("\n=== Publishing to Docker Hub ===")
-
-	if !strings.Contains(imageName, "/") {
-		return fmt.Errorf("The image name must include username/repository format (e.g., username/image:tag)")
-	}
-
-	fmt.Println("You need to authenticate with Docker Hub first.")
-	fmt.Print("Do you want to login now? [y/N]: ")
-	var doLogin string
-	fmt.Scanln(&doLogin)
-
-	if strings.ToLower(doLogin) == "y" || strings.ToLower(doLogin) == "yes" {
-		fmt.Print("Docker Hub username: ")
-		var username string
-		fmt.Scanln(&username)
-
-		fmt.Println("Please enter your Docker Hub password or access token:")
-		loginCmd := exec.Command(runtime, "login", "-u", username, "--password-stdin")
-		loginCmd.Stdin = os.Stdin
-		loginCmd.Stdout = os.Stdout
-		loginCmd.Stderr = os.Stderr
-
-		if err := loginCmd.Run(); err != nil {
-			return fmt.Errorf("login failed: %v", err)
-		}
-		fmt.Println("Login successful!")
-	}
-
-	spinner := ui.NewSpinner(fmt.Sprintf("Pushing %s to Docker Hub...", imageName))
-	spinner.Start()
-
-	pushCmd := exec.Command(runtime, "push", imageName)
-	output, err := pushCmd.CombinedOutput()
-
-	if err != nil {
-		spinner.Finish("Failed to push image")
-		fmt.Println(string(output))
-		return fmt.Errorf("push failed: %v", err)
-	}
-
-	spinner.Finish(fmt.Sprintf("Successfully pushed %s to Docker Hub", imageName))
-	fmt.Printf("\nYour image is now available at: https://hub.docker.com/r/%s\n", imageName)
 
 	return nil
 }
@@ -214,18 +181,4 @@ func (am *AddonManager) GetSupportedVersions(addonName string) ([]string, error)
 
 func (am *AddonManager) Cleanup() error {
 	return os.RemoveAll(am.workDir)
-}
-
-func getContainerRuntime() string {
-	if _, err := exec.LookPath("podman"); err == nil {
-		return "podman"
-	}
-	return "docker"
-}
-
-func pullImage(runtime, image string) error {
-	cmd := exec.Command(runtime, "pull", image)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
 }

@@ -113,9 +113,6 @@ func NewLiteGappsAddon() *LiteGappsAddon {
 }
 
 func (l *LiteGappsAddon) Download(version, arch string, onStatus func(string)) error {
-	if !l.IsSupported(version) {
-		return fmt.Errorf("LiteGapps not supported for Android %s", version)
-	}
 
 	versionLinks, ok := l.dlLinks[version]
 	if !ok {

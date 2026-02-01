@@ -1,9 +1,7 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"runtime"
 	"strings"
 
@@ -115,75 +113,64 @@ func (c *Command) executeInit() error {
 	}
 
 	if offerAddons {
-		fmt.Print("\nDo you want to install addons? [y/N]: ")
-		var installAddons string
-		fmt.Scanln(&installAddons)
+		fmt.Print("\nWould you like to create the custom images for more features (GAPPS with any supported ARM translation libraries) ? [y/N]: ")
+		var customImageReq string
+		fmt.Scanln(&customImageReq)
 
-		if strings.ToLower(installAddons) == "y" || strings.ToLower(installAddons) == "yes" {
-			am := addons.NewAddonManager()
-			availableAddons := am.ListAddons()
-
-			fmt.Println("\nAvailable Addons:")
-			for i, name := range availableAddons {
-				fmt.Printf("[%d] %s\n", i+1, name)
+		if strings.ToLower(customImageReq) == "y" || strings.ToLower(customImageReq) == "yes" {
+			version := config.ExtractVersionFromImage(image)
+			if version == "" {
+				fmt.Print("Could not detect Android version automatically. Please enter version (e.g., 11.0.0): ")
+				fmt.Scanln(&version)
 			}
 
-			fmt.Print("\nEnter addon numbers separated by comma (e.g., 1,3): ")
-
-			reader := bufio.NewReader(os.Stdin)
-			input, _ := reader.ReadString('\n')
-			input = strings.TrimSpace(input)
-
+			am := addons.NewAddonManager()
 			var selectedAddons []string
-			if input != "" {
-				parts := strings.Split(input, ",")
-				for _, p := range parts {
-					p = strings.TrimSpace(p)
-					if p == "" {
-						continue
+
+			// 1. Automatic Translation Libraries (Only for x86/x86_64 hosts)
+			hostArch := runtime.GOARCH
+			if hostArch == "amd64" || hostArch == "386" {
+				// Prefer Houdini for better compatibility, fallback to NDK
+				houdini := am.GetAddonNamesByType(addons.AddonTypeHoudini, version)
+				if len(houdini) > 0 {
+					selectedAddons = append(selectedAddons, houdini[0])
+					fmt.Printf("\nSelected ARM translation: %s (Auto-detected)\n", houdini[0])
+				} else {
+					ndk := am.GetAddonNamesByType(addons.AddonTypeNDK, version)
+					if len(ndk) > 0 {
+						selectedAddons = append(selectedAddons, ndk[0])
+						fmt.Printf("\nSelected ARM translation: %s (Auto-detected)\n", ndk[0])
 					}
-					var idx int
-					fmt.Sscanf(p, "%d", &idx)
-					if idx >= 1 && idx <= len(availableAddons) {
-						selectedAddons = append(selectedAddons, availableAddons[idx-1])
-					}
+				}
+			}
+
+			// 2. GAPPS (User choice)
+			gappsAddons := am.GetAddonNamesByType(addons.AddonTypeGapps, version)
+			if len(gappsAddons) > 0 {
+				fmt.Println("\nAvailable GAPPS:")
+				for i, name := range gappsAddons {
+					fmt.Printf("[%d] %s\n", i+1, name)
+				}
+				fmt.Printf("[%d] None\n", len(gappsAddons)+1)
+				fmt.Printf("Select GAPPS [1-%d]: ", len(gappsAddons)+1)
+
+				var choice int
+				fmt.Scanln(&choice)
+				if choice >= 1 && choice <= len(gappsAddons) {
+					selectedAddons = append(selectedAddons, gappsAddons[choice-1])
 				}
 			}
 
 			if len(selectedAddons) > 0 {
-				version := config.ExtractVersionFromImage(image)
-				if version == "" {
-					fmt.Print("Could not detect Android version. Please enter version (e.g., 11.0.0): ")
-					fmt.Scanln(&version)
-				}
-
 				arch := "x86_64"
 				if runtime.GOARCH == "arm64" {
 					arch = "arm64"
 				}
 
 				customImageName := fmt.Sprintf("reddock-custom:%s-%s", containerName, version)
+				fmt.Printf("\nBuilding custom image '%s' with selected features...\n", customImageName)
 
-				fmt.Print("\nDo you want to publish this image to Docker Hub? [y/N]: ")
-				var publishImage string
-				fmt.Scanln(&publishImage)
-
-				pushToRegistry := false
-				if strings.ToLower(publishImage) == "y" || strings.ToLower(publishImage) == "yes" {
-					fmt.Print("Enter Docker Hub image name (format: username/repository:tag): ")
-					reader := bufio.NewReader(os.Stdin)
-					dockerHubName, _ := reader.ReadString('\n')
-					dockerHubName = strings.TrimSpace(dockerHubName)
-
-					if dockerHubName != "" {
-						customImageName = dockerHubName
-						pushToRegistry = true
-					}
-				}
-
-				fmt.Printf("\nBuilding custom image '%s' with addons: %v\n", customImageName, selectedAddons)
-
-				if err := am.BuildCustomImage(image, customImageName, version, arch, selectedAddons, pushToRegistry); err != nil {
+				if err := am.BuildCustomImage(image, customImageName, version, arch, selectedAddons); err != nil {
 					return fmt.Errorf("Failed to build custom image: %v", err)
 				}
 				image = customImageName

@@ -49,9 +49,6 @@ func NewOpenGappsAddon() *OpenGappsAddon {
 }
 
 func (o *OpenGappsAddon) Download(version, arch string, onStatus func(string)) error {
-	if !o.IsSupported(version) {
-		return fmt.Errorf("OpenGapps only supports Android 11.0.0")
-	}
 
 	archLinks, ok := o.dlLinks[arch]
 	if !ok {
