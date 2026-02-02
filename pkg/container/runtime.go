@@ -14,6 +14,7 @@ type Runtime interface {
 	PushImage(image string) error
 	Run(args ...string) error
 	Stop(containerName string) error
+	StartExisting(containerName string) error
 	Remove(containerName string, force bool) error
 	RemoveImage(image string) error
 	Inspect(containerName string, format string) (string, error)
@@ -69,6 +70,10 @@ func (r *GenericRuntime) Run(args ...string) error {
 
 func (r *GenericRuntime) Stop(containerName string) error {
 	return r.Command("stop", containerName).Run()
+}
+
+func (r *GenericRuntime) StartExisting(containerName string) error {
+	return r.Command("start", containerName).Run()
 }
 
 func (r *GenericRuntime) Remove(containerName string, force bool) error {

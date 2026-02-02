@@ -47,15 +47,21 @@ func (m *Manager) Start(verbose bool) error {
 	spinner := ui.NewSpinner(fmt.Sprintf("Starting container '%s'...", m.containerName))
 	spinner.Start()
 
-	// Build run command
-	args := m.buildRunArgs(container)
-
-	cmd := m.runtime.Command(args...)
-	output, err := cmd.CombinedOutput()
-
-	if err != nil {
-		spinner.Finish(fmt.Sprintf("Failed to start container '%s'", m.containerName))
-		return fmt.Errorf("failed to start container: %s\n%s", err, string(output))
+	var err error
+	if m.runtime.Exists(m.containerName) {
+		err = m.runtime.StartExisting(m.containerName)
+		if err != nil {
+			spinner.Finish(fmt.Sprintf("Failed to start container '%s'", m.containerName))
+			return fmt.Errorf("Failed to start existing container: %v", err)
+		}
+	} else {
+		args := m.buildRunArgs(container)
+		cmd := m.runtime.Command(args...)
+		output, runErr := cmd.CombinedOutput()
+		if runErr != nil {
+			spinner.Finish(fmt.Sprintf("Failed to start container '%s'", m.containerName))
+			return fmt.Errorf("Failed to start container: %s\n%s", runErr, string(output))
+		}
 	}
 
 	spinner.Finish(fmt.Sprintf("Container '%s' started successfully", m.containerName))
@@ -119,10 +125,10 @@ func (m *Manager) Stop() error {
 		return fmt.Errorf("failed to stop container: %v", err)
 	}
 
-	// Remove container after stop
 	if err := m.runtime.Remove(m.containerName, false); err != nil {
-		// Don't fail if remove fails
-		fmt.Printf("Warning: Could not remove stopped container: %v\n", err)
+		if forceErr := m.runtime.Remove(m.containerName, true); forceErr != nil {
+			fmt.Printf("Warning: Could not remove stopped container: %v\n", forceErr)
+		}
 	}
 
 	spinner.Finish(fmt.Sprintf("Container '%s' stopped successfully", m.containerName))
