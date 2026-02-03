@@ -17,7 +17,11 @@ type Initializer struct {
 }
 
 func NewInitializer(containerName, image string) *Initializer {
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Printf("Warning: Failed to load config: %v\n", err)
+		cfg = config.GetDefault()
+	}
 
 	container := cfg.GetContainer(containerName)
 	if container == nil {
@@ -60,6 +64,10 @@ func (i *Initializer) Initialize() error {
 		return err
 	}
 
+	if err := config.ValidateImageName(i.container.ImageURL); err != nil {
+		return fmt.Errorf("Invalid image name: %v", err)
+	}
+
 	s1 := ui.NewSpinner("Checking system requirements...")
 	s1.Start()
 
@@ -81,7 +89,7 @@ func (i *Initializer) Initialize() error {
 	} else {
 		s2 := ui.NewSpinner("Verifying custom image availability...")
 		s2.Start()
-		
+
 		if err := i.verifyImageExists(); err != nil {
 			s2.Finish("Image verification failed")
 			return fmt.Errorf("Image '%s' not found locally. Please build or pull it first.\n"+
@@ -174,7 +182,11 @@ type Lister struct {
 }
 
 func NewLister() *Lister {
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Printf("Warning: Failed to load config: %v\n", err)
+		cfg = config.GetDefault()
+	}
 	return &Lister{config: cfg}
 }
 

@@ -14,7 +14,11 @@ type StatusManager struct {
 }
 
 func NewStatusManager(containerName string) *StatusManager {
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Printf("Warning: Failed to load config: %v\n", err)
+		cfg = config.GetDefault()
+	}
 	return &StatusManager{
 		manager:       container.NewManagerForContainer(containerName),
 		config:        cfg,

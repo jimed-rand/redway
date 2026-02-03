@@ -27,6 +27,12 @@ func (a *AdbManager) ShowConnection() error {
 		return fmt.Errorf("The container '%s' is not running. Start it with 'reddock start %s'", a.containerName, a.containerName)
 	}
 
+	container := a.manager.GetContainer()
+	port := 5555
+	if container != nil && container.Port != 0 {
+		port = container.Port
+	}
+
 	ip, _ := a.manager.GetIP()
 	if ip == "" {
 		ip = "localhost"
@@ -34,11 +40,11 @@ func (a *AdbManager) ShowConnection() error {
 
 	fmt.Println("\nADB Information:")
 	fmt.Println("===========================")
-	fmt.Printf("Default connection: localhost:5555\n")
+	fmt.Printf("Connection: localhost:%d\n", port)
 	fmt.Printf("Internal IP: %s\n", ip)
 
 	fmt.Printf("\nAttempting to connect via ADB...\n")
-	cmd := exec.Command("adb", "connect", "localhost:5555")
+	cmd := exec.Command("adb", "connect", fmt.Sprintf("localhost:%d", port))
 	output, _ := cmd.CombinedOutput()
 	fmt.Printf("ADB Output: %s", string(output))
 

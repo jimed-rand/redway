@@ -206,3 +206,22 @@ func ExtractVersionFromImage(imageURL string) string {
 
 	return versionPart
 }
+
+func SuggestCustomImageName(containerName, version string) string {
+	name := fmt.Sprintf("reddock-custom:%s-%s", containerName, version)
+	return strings.ToLower(strings.ReplaceAll(name, " ", "-"))
+}
+
+func ValidateImageName(name string) error {
+	if name == "" {
+		return fmt.Errorf("Image name cannot be empty")
+	}
+	// Basic Docker image name validation (lowercase letters, digits, separators)
+	// Simplified check for now
+	for _, r := range name {
+		if (r < 'a' || r > 'z') && (r < '0' || r > '9') && r != '.' && r != '_' && r != '-' && r != ':' && r != '/' {
+			return fmt.Errorf("Invalid character in image name: %c. Use format: NAMESPACE/REPOSITORY[:TAG] (Avoid HOST[:PORT]/ for local images)", r)
+		}
+	}
+	return nil
+}

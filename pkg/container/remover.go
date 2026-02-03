@@ -14,7 +14,11 @@ type Remover struct {
 }
 
 func NewRemover(containerName string) *Remover {
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Printf("Warning: Failed to load config: %v\n", err)
+		cfg = config.GetDefault()
+	}
 	return &Remover{
 		config:        cfg,
 		containerName: containerName,
@@ -110,7 +114,7 @@ func (r *Remover) Remove(removeImage bool) error {
 		}
 		bar.Increment()
 	}
-	
+
 	finalMsg := fmt.Sprintf("Container '%s' removed successfully", container.Name)
 	if removeImage {
 		finalMsg += " (including image)"

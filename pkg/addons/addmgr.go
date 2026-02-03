@@ -12,6 +12,7 @@ import (
 type AddonManager struct {
 	availableAddons map[string]Addon
 	workDir         string
+	cacheDir        string
 	runtime         container.Runtime
 }
 
@@ -103,7 +104,7 @@ func (am *AddonManager) PrepareAddon(addonName, version, arch string) error {
 func (am *AddonManager) BuildDockerfile(baseImage string, addons []string) (string, error) {
 	var dockerfile strings.Builder
 
-	dockerfile.WriteString(fmt.Sprintf("FROM %s\n", baseImage))
+	dockerfile.WriteString(fmt.Sprintf("FROM %s\n\n", baseImage))
 
 	for _, addonName := range addons {
 		addon, err := am.GetAddon(addonName)
@@ -115,6 +116,10 @@ func (am *AddonManager) BuildDockerfile(baseImage string, addons []string) (stri
 			dockerfile.WriteString(instructions)
 		}
 	}
+
+	// Add Redroid boot arguments
+	dockerfile.WriteString("\n# Redroid boot arguments\n")
+	dockerfile.WriteString("CMD [\"androidboot.redroid_gpu_mode=auto\"]\n")
 
 	return dockerfile.String(), nil
 }
@@ -129,15 +134,19 @@ func (am *AddonManager) BuildCustomImage(baseImage, targetImage, version, arch s
 	fmt.Printf("Target Image: %s\n", targetImage)
 	fmt.Printf("Addons: %v\n\n", addonNames)
 
-	// Pull base image if it's not a local one
-	if !strings.HasPrefix(baseImage, "reddock-custom:") && !strings.HasPrefix(baseImage, "reddock/") {
+	// Pull base image if it's official redroid image
+	if strings.HasPrefix(baseImage, "redroid/redroid:") {
+		fmt.Printf("Pulling official Redroid image %s...\n", baseImage)
+		if err := am.runtime.PullImage(baseImage); err != nil {
+			return fmt.Errorf("Failed to pull official image: %v", err)
+		}
+	} else if !strings.HasPrefix(baseImage, "reddock-custom:") && !strings.HasPrefix(baseImage, "reddock/") {
+		// For other images, try to pull if not local
 		fmt.Printf("Pulling base image %s...\n", baseImage)
 		if err := am.runtime.PullImage(baseImage); err != nil {
-			return fmt.Errorf("Failed to pull base image: %v", err)
+			// If pull fails, might be a local image, just warn
+			fmt.Printf("Warning: Could not pull image %s, hoping it exists locally: %v\n", baseImage, err)
 		}
-		fmt.Println("Base image pulled successfully")
-	} else {
-		fmt.Printf("Base image %s is a custom image, skipping pull...\n", baseImage)
 	}
 
 	for _, addonName := range addonNames {
@@ -164,7 +173,7 @@ func (am *AddonManager) BuildCustomImage(baseImage, targetImage, version, arch s
 
 	buildArgs := []string{"build", "-t", targetImage, am.workDir}
 	if am.runtime.Name() == "docker" {
-		buildArgs = []string{"buildx", "build", "-t", targetImage, am.workDir}
+		buildArgs = []string{"buildx", "build", "--load", "-t", targetImage, am.workDir}
 	}
 	cmd := am.runtime.Command(buildArgs...)
 	output, err := cmd.CombinedOutput()

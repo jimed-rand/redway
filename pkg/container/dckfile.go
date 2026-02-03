@@ -20,7 +20,11 @@ type DockerfileGenerator struct {
 }
 
 func NewDockerfileGenerator(containerName string) *DockerfileGenerator {
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Printf("Warning: Failed to load config: %v\n", err)
+		cfg = config.GetDefault()
+	}
 	return &DockerfileGenerator{
 		config:        cfg,
 		containerName: containerName,
@@ -216,6 +220,14 @@ func (g *DockerfileGenerator) EditAndBuild(targetImage string) error {
 
 // Build builds a Docker image from the saved Dockerfile
 func (g *DockerfileGenerator) Build(targetImage string) error {
+	container := g.config.GetContainer(g.containerName)
+	if container != nil && strings.HasPrefix(container.ImageURL, "redroid/redroid:") {
+		fmt.Printf("Pulling official Redroid image %s...\n", container.ImageURL)
+		if err := g.runtime.PullImage(container.ImageURL); err != nil {
+			fmt.Printf("Warning: Failed to pull base image: %v\n", err)
+		}
+	}
+
 	dockerfilePath := filepath.Join(g.workDir, "Dockerfile")
 
 	// Check if Dockerfile exists
@@ -228,7 +240,7 @@ func (g *DockerfileGenerator) Build(targetImage string) error {
 
 	buildArgs := []string{"build", "-t", targetImage, g.workDir}
 	if g.runtime.Name() == "docker" {
-		buildArgs = []string{"buildx", "build", "-t", targetImage, g.workDir}
+		buildArgs = []string{"buildx", "build", "--load", "-t", targetImage, g.workDir}
 	}
 	cmd := g.runtime.Command(buildArgs...)
 	output, err := cmd.CombinedOutput()

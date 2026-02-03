@@ -17,7 +17,11 @@ type Manager struct {
 }
 
 func NewManagerForContainer(containerName string) *Manager {
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Printf("Warning: Failed to load config: %v\n", err)
+		cfg = config.GetDefault()
+	}
 	return &Manager{
 		runtime:       NewRuntime(),
 		config:        cfg,
@@ -113,16 +117,16 @@ func (m *Manager) Stop() error {
 	}
 
 	if !m.runtime.IsRunning(m.containerName) {
-		fmt.Printf("Container '%s' is already stopped\n", m.containerName)
-		return nil
-	}
+		// Even if not running, we continue to the removal step
+	} else {
+		spinner := ui.NewSpinner(fmt.Sprintf("Stopping container '%s'...", m.containerName))
+		spinner.Start()
 
-	spinner := ui.NewSpinner(fmt.Sprintf("Stopping container '%s'...", m.containerName))
-	spinner.Start()
-
-	if err := m.runtime.Stop(m.containerName); err != nil {
-		spinner.Finish(fmt.Sprintf("Failed to stop container '%s'", m.containerName))
-		return fmt.Errorf("failed to stop container: %v", err)
+		if err := m.runtime.Stop(m.containerName); err != nil {
+			spinner.Finish(fmt.Sprintf("Failed to stop container '%s'", m.containerName))
+			return fmt.Errorf("failed to stop container: %v", err)
+		}
+		spinner.Finish(fmt.Sprintf("Container '%s' stopped successfully", m.containerName))
 	}
 
 	if err := m.runtime.Remove(m.containerName, false); err != nil {
@@ -131,7 +135,6 @@ func (m *Manager) Stop() error {
 		}
 	}
 
-	spinner.Finish(fmt.Sprintf("Container '%s' stopped successfully", m.containerName))
 	return nil
 }
 
@@ -155,6 +158,13 @@ func (m *Manager) GetIP() (string, error) {
 		return "", err
 	}
 	return ip, nil
+}
+
+func (m *Manager) GetContainer() *config.Container {
+	if m.config == nil {
+		return nil
+	}
+	return m.config.GetContainer(m.containerName)
 }
 
 func (m *Manager) showLogs() error {

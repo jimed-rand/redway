@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"reddock/pkg/addons"
+	"reddock/pkg/config"
 )
 
 func (c *Command) executeAddons() error {
@@ -73,10 +74,13 @@ func (c *Command) executeAddonsList() error {
 
 func (c *Command) executeAddonsBuild(args []string) error {
 	if len(args) < 3 {
-		return fmt.Errorf("Command invalid! usage: reddock addons build <image-name> <android-version> <addon1> [addon2] ...")
+		return fmt.Errorf("Command invalid!\nUsage: reddock addons build <image-name> <android-version> <addon1> [addon2] ...\nFormat: Use NAMESPACE/REPOSITORY[:TAG] (Avoid HOST[:PORT]/ for local images)")
 	}
 
 	imageName := args[0]
+	if err := config.ValidateImageName(imageName); err != nil {
+		return fmt.Errorf("Invalid image name: %v", err)
+	}
 	version := args[1]
 	addonNames := args[2:]
 	arch := getHostArch()

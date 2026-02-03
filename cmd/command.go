@@ -161,21 +161,22 @@ func (c *Command) executeInit() error {
 				ndk := am.GetAddonNamesByType(addons.AddonTypeNDK, version)
 
 				var selected string
-				if vendor == utils.VendorIntel {
+				switch vendor {
+				case utils.VendorIntel:
 					// Prefer Houdini for Intel
 					if len(houdini) > 0 {
 						selected = houdini[0]
 					} else if len(ndk) > 0 {
 						selected = ndk[0]
 					}
-				} else if vendor == utils.VendorAMD {
+				case utils.VendorAMD:
 					// Prefer NDK for AMD
 					if len(ndk) > 0 {
 						selected = ndk[0]
 					} else if len(houdini) > 0 {
 						selected = houdini[0]
 					}
-				} else {
+				default:
 					// Default fallback
 					if len(houdini) > 0 {
 						selected = houdini[0]
@@ -213,7 +214,21 @@ func (c *Command) executeInit() error {
 					arch = "arm64"
 				}
 
-				customImageName := fmt.Sprintf("reddock-custom:%s-%s", containerName, version)
+				customImageName := config.SuggestCustomImageName(containerName, version)
+				fmt.Println("\nBuilding custom image requires a valid Docker name format:")
+				fmt.Println("Recommended: NAMESPACE/REPOSITORY[:TAG] (e.g., reddock-custom/android:11)")
+				fmt.Println("Note: Avoid HOST[:PORT]/ for local images.")
+				fmt.Printf("Enter target image name [%s]: ", customImageName)
+				var inputName string
+				fmt.Scanln(&inputName)
+				if inputName != "" {
+					customImageName = inputName
+				}
+
+				if err := config.ValidateImageName(customImageName); err != nil {
+					return fmt.Errorf("Invalid image name: %v", err)
+				}
+
 				fmt.Printf("\nBuilding custom image '%s' with selected features...\n", customImageName)
 
 				if err := am.BuildCustomImage(image, customImageName, version, arch, selectedAddons); err != nil {
@@ -394,7 +409,7 @@ func (c *Command) executeDockerfile() error {
 
 	case "build":
 		if len(c.Args) < 2 {
-			return fmt.Errorf("Container name is required! Usage: reddock dockerfile build <container-name> [image-name]")
+			return fmt.Errorf("Container name is required! Usage: reddock dockerfile build <container-name> [image-name]\nFormat: Use NAMESPACE/REPOSITORY[:TAG] (Avoid HOST[:PORT]/ for local images)")
 		}
 		containerName := c.Args[1]
 		imageName := fmt.Sprintf("reddock/%s:custom", containerName)
@@ -410,7 +425,7 @@ func (c *Command) executeDockerfile() error {
 
 	case "commit":
 		if len(c.Args) < 3 {
-			return fmt.Errorf("Usage: reddock dockerfile commit <container-name> <new-image-name> [message]")
+			return fmt.Errorf("Usage: reddock dockerfile commit <container-name> <new-image-name> [message]\nFormat: Use NAMESPACE/REPOSITORY[:TAG] (Avoid HOST[:PORT]/ for local images)")
 		}
 		containerName := c.Args[1]
 		imageName := c.Args[2]

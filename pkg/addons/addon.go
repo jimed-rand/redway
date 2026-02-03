@@ -1,10 +1,12 @@
 package addons
 
 import (
+	"archive/zip"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 )
 
@@ -123,4 +125,67 @@ func downloadFile(url, filepath string) error {
 
 func ensureDir(path string) error {
 	return os.MkdirAll(path, 0755)
+}
+
+func copyDir2(src, dst string) error {
+	if err := os.MkdirAll(dst, 0755); err != nil {
+		return err
+	}
+	// Use cp -a to preserve permissions, symlinks, etc.
+	// This is much more robust for Android system files.
+	cmd := exec.Command("cp", "-a", filepath.Clean(src)+"/.", filepath.Clean(dst)+"/")
+	return cmd.Run()
+}
+
+func copyFile(src, dst string) error {
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return err
+	}
+	cmd := exec.Command("cp", "-a", src, dst)
+	return cmd.Run()
+}
+
+func extractZip(src, dest string) error {
+	if err := os.MkdirAll(dest, 0755); err != nil {
+		return err
+	}
+
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		fpath := filepath.Join(dest, f.Name)
+
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(fpath, os.ModePerm)
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
+			return err
+		}
+
+		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return err
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			outFile.Close()
+			return err
+		}
+
+		_, err = io.Copy(outFile, rc)
+		outFile.Close()
+		rc.Close()
+
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
